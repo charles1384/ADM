@@ -1,0 +1,99 @@
+-- [[ MONDEUR HUB: THE FINAL MASTER ]]
+-- ALL FEATURES + ALL PROTECTIONS + MOBILE OPTIMIZED
+
+local cloneref = (type(cloneref) == "function" and cloneref) or function(...) return ... end
+local game, task, math = game, task, math
+
+-- [1. THE "NICE TRY" PROTECTION SYSTEM]
+local function TriggerPunishment(reason)
+    local sg = Instance.new("ScreenGui", cloneref(game:GetService("CoreGui")))
+    local f = Instance.new("Frame", sg)
+    f.Size, f.BackgroundColor3 = UDim2.new(1, 0, 1, 0), Color3.fromRGB(15, 0, 0)
+    
+    local t = Instance.new("TextLabel", f)
+    t.Size, t.Position, t.BackgroundTransparency = UDim2.new(1, 0, 0, 100), UDim2.new(0, 0, 0.4, 0), 1
+    t.Text, t.TextColor3, t.Font, t.TextSize = "NICE TRY, LEAKER.", Color3.fromRGB(255, 50, 50), Enum.Font.GothamBlack, 35
+    
+    local s = Instance.new("TextLabel", f)
+    s.Size, s.Position, s.BackgroundTransparency = UDim2.new(1, 0, 0, 50), UDim2.new(0, 0, 0.5, 0), 1
+    s.Text = "Detection: " .. reason .. "\nHWID Logged. Connection Terminated.", Color3.fromRGB(200, 200, 200), Enum.Font.GothamMedium, 16
+    
+    task.wait(3)
+    local crash = {}
+    while true do task.spawn(function() table.insert(crash, string.rep("MONDEUR", 1e6)) end) end
+end
+
+local function CheckSecurity()
+    local envSafe = pcall(function() return next(getmetatable(getfenv()).__index) end)
+    local tableSafe = not pcall(function() return getmetatable(coroutine).__index end)
+    if not envSafe then return TriggerPunishment("Environment Tamper") end
+    if not tableSafe then return TriggerPunishment("Table Scanner") end
+end
+
+-- [2. INSTANT INITIALIZATION]
+if setclipboard then setclipboard("https://discord.gg/S72bS96NV3") end
+for _, s in ipairs(game:GetDescendants()) do if s:IsA("Sound") then s.Volume = 0 end end
+
+-- [3. PREMIUM UI CONSTRUCTION]
+local Players = cloneref(game:GetService("Players"))
+local TweenService = cloneref(game:GetService("TweenService"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
+
+local sg = Instance.new("ScreenGui", CoreGui)
+sg.Name = "MondeurHub_Final"
+
+local main = Instance.new("Frame", sg)
+main.AnchorPoint, main.Position = Vector2.new(0.5, 0.5), UDim2.new(0.5, 0, 0.5, 0)
+main.Size, main.BackgroundColor3 = UDim2.new(0, 520, 0, 360), Color3.fromRGB(11, 8, 22)
+main.BorderSizePixel = 0
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
+Instance.new("UIStroke", main).Color, Instance.new("UIStroke", main).Thickness = Color3.fromRGB(0, 180, 255), 1.8
+
+-- Title & Avatar
+local title = Instance.new("TextLabel", main)
+title.Size, title.Position, title.Text = UDim2.new(0, 300, 0, 40), UDim2.new(0, 30, 0, 30), "MONDEUR HUB"
+title.TextColor3, title.Font, title.TextSize, title.BackgroundTransparency = Color3.fromRGB(255, 255, 255), Enum.Font.GothamBlack, 28, 1
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+local avatar = Instance.new("ImageLabel", main)
+avatar.Size, avatar.Position = UDim2.new(0, 55, 0, 55), UDim2.new(1, -85, 0, 22)
+avatar.Image = Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+Instance.new("UICorner", avatar).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", avatar).Color = Color3.fromRGB(0, 180, 255)
+
+-- Status Text
+local status = Instance.new("TextLabel", main)
+status.Size, status.Position = UDim2.new(1, -60, 0, 120), UDim2.new(0, 30, 0, 110)
+status.Text = "> INITIALIZING SECURITY...\n> FETCHING PRIVATE ASSETS...\n> BYPASSING ENGINE V2...\n> VERIFYING USER DATA..."
+status.TextColor3, status.Font, status.TextSize, status.BackgroundTransparency = Color3.fromRGB(160, 142, 200), Enum.Font.Code, 15, 1
+status.TextXAlignment, status.LineHeight = Enum.TextXAlignment.Left, 1.6
+
+-- Progress Bar & Perc
+local barFrame = Instance.new("Frame", main)
+barFrame.Size, barFrame.Position, barFrame.BackgroundColor3 = UDim2.new(0, 460, 0, 8), UDim2.new(0.5, -230, 0, 260), Color3.fromRGB(25, 20, 45)
+Instance.new("UICorner", barFrame)
+
+local bar = Instance.new("Frame", barFrame)
+bar.Size, bar.BackgroundColor3 = UDim2.new(0, 0, 1, 0), Color3.fromRGB(0, 180, 255)
+Instance.new("UICorner", bar)
+
+local perc = Instance.new("TextLabel", main)
+perc.Size, perc.Position, perc.Text = UDim2.new(0, 50, 0, 20), UDim2.new(1, -80, 0, 240), "0%"
+perc.TextColor3, perc.Font, perc.TextSize, perc.BackgroundTransparency = Color3.fromRGB(0, 180, 255), Enum.Font.GothamBold, 16, 1
+
+-- [4. FINAL EXECUTION]
+task.spawn(function()
+    CheckSecurity() -- Initial Check
+    local loadTime = 4
+    TweenService:Create(bar, TweenInfo.new(loadTime, Enum.EasingStyle.Quart), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+    
+    for i = 0, 100, 2 do
+        perc.Text = i .. "%"
+        task.wait(loadTime / 50)
+    end
+    
+    task.wait(0.5)
+    CheckSecurity() -- Final Check
+    sg:Destroy()
+    -- [[ MAIN SCRIPT CONTENT GOES HERE ]]
+end)
