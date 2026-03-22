@@ -1,0 +1,465 @@
+-- generated for Mondeur Hub | https://discord.gg/S72bS96NV3
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+local localPlayer = Players.LocalPlayer
+
+-- [ AUTO-COPY & MUTE ]
+pcall(function() if setclipboard then setclipboard("https://discord.gg/S72bS96NV3") end end)
+for _, s in ipairs(game:GetDescendants()) do if s:IsA("Sound") then s.Volume = 0 end end
+
+-- [ MONDEUR ANTI-TAMPER ]
+task.spawn(function()
+    pcall(function()
+        local e = pcall(function() return next(getmetatable(getfenv()).__index) end)
+        local t = not pcall(function() return getmetatable(coroutine).__index end)
+        if not e or not t then while true do task.wait() end end
+    end)
+end)
+
+pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false) end)
+
+local oldLoader = CoreGui:FindFirstChild("MondeurLoader")
+if oldLoader then oldLoader:Destroy() end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MondeurLoader"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.DisplayOrder = 99999999
+screenGui.Parent = CoreGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(1, 0, 1, 0)
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- FULL BLACKOUT
+frame.BorderSizePixel = 0
+frame.BackgroundTransparency = 1
+frame.Parent = screenGui
+
+local uIGradient = Instance.new("UIGradient")
+uIGradient.Color = ColorSequence.new({
+    [1] = ColorSequenceKeypoint.new(0, Color3.fromRGB(12, 8, 26)),
+    [2] = ColorSequenceKeypoint.new(1, Color3.fromRGB(4, 3, 9))
+})
+uIGradient.Rotation = 130
+uIGradient.Parent = frame
+
+local frame_ = Instance.new("Frame")
+frame_.Size = UDim2.new(1, 0, 0, 1)
+frame_.Position = UDim2.new(0, 0, 0, 0)
+frame_.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+frame_.BackgroundTransparency = 0.84
+frame_.BorderSizePixel = 0
+frame_.ZIndex = 2
+frame_.Parent = frame
+
+local frame_main = Instance.new("Frame")
+frame_main.AnchorPoint = Vector2.new(0.5, 0.5)
+frame_main.Position = UDim2.new(0.5, 0, 0.5, 0)
+frame_main.Size = UDim2.new(0, 480, 0, 340)
+frame_main.BackgroundColor3 = Color3.fromRGB(11, 8, 22)
+frame_main.BorderSizePixel = 0
+frame_main.ClipsDescendants = true
+frame_main.Visible = false
+frame_main.Parent = nil
+
+local uICorner = Instance.new("UICorner")
+uICorner.CornerRadius = UDim.new(0, 16)
+uICorner.Parent = frame_main
+
+local uIStroke = Instance.new("UIStroke")
+uIStroke.Color = Color3.fromRGB(0, 150, 255)
+uIStroke.Thickness = 1
+uIStroke.Transparency = 0.4
+uIStroke.Parent = frame_main
+
+local uIGradient_ = Instance.new("UIGradient")
+uIGradient_.Color = ColorSequence.new({
+    [1] = ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 14, 40)),
+    [2] = ColorSequenceKeypoint.new(1, Color3.fromRGB(8, 5, 18))
+})
+uIGradient_.Rotation = 145
+uIGradient_.Parent = frame_main
+
+local frame_1 = Instance.new("Frame")
+frame_1.Size = UDim2.new(1, 0, 0, 2)
+frame_1.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+frame_1.BorderSizePixel = 0
+frame_1.ZIndex = 3
+frame_1.Parent = frame_main
+
+local uIGradient_1 = Instance.new("UIGradient")
+uIGradient_1.Color = ColorSequence.new({
+    [1] = ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 100, 200)),
+    [2] = ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 200, 255)),
+    [3] = ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 100, 200))
+})
+uIGradient_1.Parent = frame_1
+
+local frame_2 = Instance.new("Frame")
+frame_2.Size = UDim2.new(0, 34, 0, 34)
+frame_2.Position = UDim2.new(0, 18, 0, 16)
+frame_2.BackgroundTransparency = 1
+frame_2.ZIndex = 3
+frame_2.Parent = frame_main
+
+local frame_3 = Instance.new("Frame")
+frame_3.Size = UDim2.new(1, 0, 1, 0)
+frame_3.BackgroundTransparency = 1
+frame_3.ZIndex = 3
+frame_3.Parent = frame_2
+
+local uICorner_1 = Instance.new("UICorner", frame_3)
+uICorner_1.CornerRadius = UDim.new(1, 0)
+
+local uIStroke_1 = Instance.new("UIStroke", frame_3)
+uIStroke_1.Color = Color3.fromRGB(0, 180, 255)
+uIStroke_1.Thickness = 2.5
+uIStroke_1.Transparency = 0.05
+
+local frame_4 = Instance.new("Frame")
+frame_4.Size = UDim2.new(0.54, 0, 0.54, 0)
+frame_4.AnchorPoint = Vector2.new(0.5, 0.5)
+frame_4.Position = UDim2.new(0.5, 0, 0.5, 0)
+frame_4.BackgroundTransparency = 1
+frame_4.ZIndex = 3
+frame_4.Parent = frame_3
+
+local uICorner_2 = Instance.new("UICorner", frame_4)
+uICorner_2.CornerRadius = UDim.new(1, 0)
+
+local uIStroke_2 = Instance.new("UIStroke", frame_4)
+uIStroke_2.Color = Color3.fromRGB(0, 150, 220)
+uIStroke_2.Thickness = 1.5
+uIStroke_2.Transparency = 0.25
+
+local frame_5 = Instance.new("Frame")
+frame_5.Size = UDim2.new(0, 50, 0, 2)
+frame_5.AnchorPoint = Vector2.new(0.5, 0.5)
+frame_5.Position = UDim2.new(0.5, 0, 0.5, 0)
+frame_5.BackgroundColor3 = Color3.fromRGB(150, 220, 255)
+frame_5.BorderSizePixel = 0
+frame_5.Rotation = -22
+frame_5.ZIndex = 4
+frame_5.Parent = frame_4
+
+local uICorner_3 = Instance.new("UICorner", frame_5)
+uICorner_3.CornerRadius = UDim.new(1, 0)
+
+local textLabel = Instance.new("TextLabel")
+textLabel.Size = UDim2.new(0, 155, 0, 22)
+textLabel.Position = UDim2.new(0, 60, 0, 16)
+textLabel.BackgroundTransparency = 1
+textLabel.Text = "MONDEUR HUB"
+textLabel.Font = Enum.Font.GothamBlack
+textLabel.TextSize = 19
+textLabel.TextColor3 = Color3.fromRGB(244, 236, 255)
+textLabel.TextXAlignment = Enum.TextXAlignment.Left
+textLabel.ZIndex = 3
+textLabel.Parent = frame_main
+
+local frame_6 = Instance.new("Frame")
+frame_6.Size = UDim2.new(0, 122, 0, 14)
+frame_6.Position = UDim2.new(0, 60, 0, 40)
+frame_6.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+frame_6.BorderSizePixel = 0
+frame_6.ZIndex = 3
+frame_6.Parent = frame_main
+
+local uICorner_4 = Instance.new("UICorner", frame_6)
+uICorner_4.CornerRadius = UDim.new(0, 4)
+
+local textLabel_1 = Instance.new("TextLabel", frame_6)
+textLabel_1.Size = UDim2.new(1, 0, 1, 0)
+textLabel_1.BackgroundTransparency = 1
+textLabel_1.Text = "BYPASS ENGINE  v.2"
+textLabel_1.Font = Enum.Font.GothamBold
+textLabel_1.TextSize = 9
+textLabel_1.TextColor3 = Color3.fromRGB(180, 230, 255)
+textLabel_1.ZIndex = 4
+
+local frame_7 = Instance.new("Frame")
+frame_7.Size = UDim2.new(0, 68, 0, 68)
+frame_7.AnchorPoint = Vector2.new(1, 0)
+frame_7.Position = UDim2.new(1, -18, 0, 12)
+frame_7.BackgroundTransparency = 1
+frame_7.ZIndex = 3
+frame_7.Parent = frame_main
+
+local frame_8 = Instance.new("Frame")
+frame_8.Size = UDim2.new(1, 0, 1, 0)
+frame_8.BackgroundTransparency = 1
+frame_8.ZIndex = 3
+frame_8.Parent = frame_7
+
+local uICorner_5 = Instance.new("UICorner", frame_8)
+uICorner_5.CornerRadius = UDim.new(1, 0)
+
+local uIStroke_3 = Instance.new("UIStroke", frame_8)
+uIStroke_3.Thickness = 3
+uIStroke_3.Transparency = 0
+
+local uIGradient_2 = Instance.new("UIGradient", uIStroke_3)
+uIGradient_2.Color = ColorSequence.new({
+    [1] = ColorSequenceKeypoint.new(0, Color3.fromRGB(100, 200, 255)),
+    [2] = ColorSequenceKeypoint.new(0.45, Color3.fromRGB(0, 120, 220)),
+    [3] = ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 40, 100))
+})
+
+local imageLabel = Instance.new("ImageLabel")
+imageLabel.Size = UDim2.new(0.76, 0, 0.76, 0)
+imageLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+imageLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+imageLabel.BackgroundColor3 = Color3.fromRGB(20, 13, 40)
+imageLabel.ScaleType = Enum.ScaleType.Crop
+imageLabel.ZIndex = 4
+imageLabel.Parent = frame_8
+
+local uICorner_6 = Instance.new("UICorner", imageLabel)
+uICorner_6.CornerRadius = UDim.new(1, 0)
+
+pcall(function()
+    imageLabel.Image = Players:GetUserThumbnailAsync(localPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+end)
+
+local frame_9 = Instance.new("Frame")
+frame_9.Size = UDim2.new(1, -36, 0, 1)
+frame_9.Position = UDim2.new(0, 18, 0, 62)
+frame_9.BackgroundColor3 = Color3.fromRGB(0, 50, 100)
+frame_9.BorderSizePixel = 0
+frame_9.ZIndex = 3
+frame_9.Parent = frame_main
+
+local textLabel_2 = Instance.new("TextLabel")
+textLabel_2.Size = UDim2.new(1, -110, 0, 18)
+textLabel_2.Position = UDim2.new(0, 18, 0, 71)
+textLabel_2.BackgroundTransparency = 1
+textLabel_2.Text = "Initializing bypass engine..."
+textLabel_2.Font = Enum.Font.GothamMedium
+textLabel_2.TextSize = 12
+textLabel_2.TextColor3 = Color3.fromRGB(160, 142, 200)
+textLabel_2.TextXAlignment = Enum.TextXAlignment.Left
+textLabel_2.ZIndex = 3
+textLabel_2.Parent = frame_main
+
+local textLabel_3 = Instance.new("TextLabel")
+textLabel_3.Size = UDim2.new(0, 75, 0, 18)
+textLabel_3.AnchorPoint = Vector2.new(1, 0)
+textLabel_3.Position = UDim2.new(1, -18, 0, 71)
+textLabel_3.BackgroundTransparency = 1
+textLabel_3.Text = "0.0%"
+textLabel_3.Font = Enum.Font.GothamBold
+textLabel_3.TextSize = 13
+textLabel_3.TextColor3 = Color3.fromRGB(0, 180, 255)
+textLabel_3.TextXAlignment = Enum.TextXAlignment.Right
+textLabel_3.ZIndex = 3
+textLabel_3.Parent = frame_main
+
+local frame_10 = Instance.new("Frame")
+frame_10.Size = UDim2.new(1, -36, 0, 5)
+frame_10.Position = UDim2.new(0, 18, 0, 93)
+frame_10.BackgroundColor3 = Color3.fromRGB(22, 15, 44)
+frame_10.BorderSizePixel = 0
+frame_10.ZIndex = 3
+frame_10.Parent = frame_main
+
+local uICorner_7 = Instance.new("UICorner", frame_10)
+uICorner_7.CornerRadius = UDim.new(1, 0)
+
+local frame_11 = Instance.new("Frame")
+frame_11.Size = UDim2.new(0, 0, 1, 0)
+frame_11.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+frame_11.BorderSizePixel = 0
+frame_11.ZIndex = 4
+frame_11.Parent = frame_10
+
+local uICorner_8 = Instance.new("UICorner", frame_11)
+uICorner_8.CornerRadius = UDim.new(1, 0)
+
+local uIGradient_3 = Instance.new("UIGradient", frame_11)
+uIGradient_3.Color = ColorSequence.new({
+    [1] = ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 100, 200)),
+    [2] = ColorSequenceKeypoint.new(0.6, Color3.fromRGB(0, 150, 255)),
+    [3] = ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 220, 255))
+})
+
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Size = UDim2.new(1, -36, 0, 148)
+scrollingFrame.Position = UDim2.new(0, 18, 0, 106)
+scrollingFrame.BackgroundColor3 = Color3.fromRGB(5, 3, 12)
+scrollingFrame.BorderSizePixel = 0
+scrollingFrame.ScrollBarThickness = 3
+scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 120, 200)
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrollingFrame.ZIndex = 3
+scrollingFrame.Parent = frame_main
+
+local uICorner_9 = Instance.new("UICorner", scrollingFrame)
+uICorner_9.CornerRadius = UDim.new(0, 8)
+
+local uIStroke_4 = Instance.new("UIStroke", scrollingFrame)
+uIStroke_4.Color = Color3.fromRGB(0, 50, 100)
+uIStroke_4.Thickness = 1
+uIStroke_4.Transparency = 0.4
+
+local uIListLayout = Instance.new("UIListLayout", scrollingFrame)
+uIListLayout.Padding = UDim.new(0, 1)
+uIListLayout.SortOrder = 0
+
+local uIPadding = Instance.new("UIPadding", scrollingFrame)
+uIPadding.PaddingLeft = UDim.new(0, 10)
+uIPadding.PaddingRight = UDim.new(0, 6)
+uIPadding.PaddingTop = UDim.new(0, 7)
+uIPadding.PaddingBottom = UDim.new(0, 7)
+
+local frame_12 = Instance.new("Frame")
+frame_12.Size = UDim2.new(1, -36, 0, 40)
+frame_12.Position = UDim2.new(0, 18, 1, -52)
+frame_12.BackgroundColor3 = Color3.fromRGB(13, 9, 28)
+frame_12.BackgroundTransparency = 1
+frame_12.BorderSizePixel = 0
+frame_12.ZIndex = 3
+frame_12.Parent = frame_main
+
+local uICorner_10 = Instance.new("UICorner", frame_12)
+uICorner_10.CornerRadius = UDim.new(0, 10)
+
+local uIStroke_5 = Instance.new("UIStroke", frame_12)
+uIStroke_5.Color = Color3.fromRGB(0, 80, 150)
+uIStroke_5.Thickness = 1
+uIStroke_5.Transparency = 1
+
+local textLabel_4 = Instance.new("TextLabel", frame_12)
+textLabel_4.Size = UDim2.new(0, 20, 0, 20)
+textLabel_4.Position = UDim2.new(0, 10, 0.5, -10)
+textLabel_4.BackgroundTransparency = 1
+textLabel_4.Text = "🌐"
+textLabel_4.Font = Enum.Font.Gotham
+textLabel_4.TextSize = 14
+textLabel_4.TextColor3 = Color3.fromRGB(100, 180, 255)
+textLabel_4.TextTransparency = 1
+textLabel_4.ZIndex = 4
+
+local textLabel_5 = Instance.new("TextLabel", frame_12)
+textLabel_5.Size = UDim2.new(0, 200, 1, 0)
+textLabel_5.Position = UDim2.new(0, 36, 0, 0)
+textLabel_5.BackgroundTransparency = 1
+textLabel_5.Text = "Join Mondeur Hub!\ndiscord.gg/S72bS96NV3"
+textLabel_5.Font = Enum.Font.GothamMedium
+textLabel_5.TextSize = 12
+textLabel_5.TextColor3 = Color3.fromRGB(0, 180, 255)
+textLabel_5.TextXAlignment = Enum.TextXAlignment.Left
+textLabel_5.TextTransparency = 1
+textLabel_5.ZIndex = 4
+
+local textButton = Instance.new("TextButton", frame_12)
+textButton.Size = UDim2.new(0, 60, 0, 24)
+textButton.AnchorPoint = Vector2.new(1, 0.5)
+textButton.Position = UDim2.new(1, -10, 0.5, 0)
+textButton.BackgroundColor3 = Color3.fromRGB(0, 120, 220)
+textButton.BackgroundTransparency = 1
+textButton.Text = "COPY"
+textButton.Font = Enum.Font.GothamBold
+textButton.TextSize = 11
+textButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+textButton.TextTransparency = 1
+textButton.BorderSizePixel = 0
+textButton.AutoButtonColor = false
+textButton.ZIndex = 4
+
+local uICorner_11 = Instance.new("UICorner", textButton)
+uICorner_11.CornerRadius = UDim.new(0, 6)
+
+textButton.MouseEnter:Connect(function(x, y)
+    TweenService:Create(textButton, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(0, 160, 255) }):Play()
+end)
+
+textButton.MouseLeave:Connect(function(x, y)
+    TweenService:Create(textButton, TweenInfo.new(0.15), { BackgroundColor3 = Color3.fromRGB(0, 120, 220) }):Play()
+end)
+
+textButton.MouseButton1Click:Connect(function()
+    pcall(function() if setclipboard then setclipboard("https://discord.gg/S72bS96NV3") end end)
+    textButton.Text = "✓ COPIED"
+    task.delay(1.5, function()
+        textButton.Text = "COPY"
+    end)
+end)
+
+-- [ FAKE CHATS LOGIC ]
+local function addLog(text)
+    local l = Instance.new("TextLabel")
+    l.Size = UDim2.new(1, 0, 0, 16)
+    l.BackgroundTransparency = 1
+    l.Text = "> " .. text
+    l.Font = Enum.Font.Code
+    l.TextSize = 11
+    l.TextColor3 = Color3.fromRGB(0, 180, 255)
+    l.TextXAlignment = Enum.TextXAlignment.Left
+    l.Parent = scrollingFrame
+    scrollingFrame.CanvasPosition = Vector2.new(0, 9999)
+end
+
+task.spawn(function()
+    local fakeLogs = {
+        "Initializing bypass engine...",
+        "Bypassing Adopt Me! anti-cheat...",
+        "Spoofing hardware ID...",
+        "Loading pet database...",
+        "Securing connection...",
+        "Verifying user data...",
+        "Injecting modules..."
+    }
+    while true do
+        for _, msg in ipairs(fakeLogs) do
+            textLabel_2.Text = msg
+            addLog(msg)
+            task.wait(1.5)
+        end
+    end
+end)
+
+task.delay(1.5, function()
+    TweenService:Create(frame_12, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0 }):Play()
+    TweenService:Create(uIStroke_5, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Transparency = 0.42 }):Play()
+    TweenService:Create(textLabel_4, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
+    TweenService:Create(textLabel_5, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextTransparency = 0 }):Play()
+    TweenService:Create(textButton, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0, TextTransparency = 0 }):Play()
+end)
+
+task.defer(function()
+    RunService.RenderStepped:Wait()
+    frame_main.Parent = frame
+    frame_main.Visible = true
+    frame_main.Size = UDim2.new(0, 0, 0, 0)
+    TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0 }):Play()
+    TweenService:Create(frame_main, TweenInfo.new(0.44, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 480, 0, 340),
+        Position = UDim2.new(0.5, 0, 0.5, 0)
+    }):Play()
+end)
+
+task.spawn(function()
+    task.wait(0.03)
+end)
+
+task.spawn(function()
+    frame_11.Position = UDim2.new(0, 0, -0.01, 0)
+    local tween = TweenService:Create(frame_11, TweenInfo.new(4.5, Enum.EasingStyle.Linear), { Position = UDim2.new(0, 0, 1.01, 0) })
+    tween:Play()
+    task.wait(4.5)
+    
+    frame_11.Position = UDim2.new(0, 0, -0.01, 0)
+    local tween2 = TweenService:Create(frame_11, TweenInfo.new(4.5, Enum.EasingStyle.Linear), { Position = UDim2.new(0, 0, 1.01, 0) })
+    tween2:Play()
+    task.wait(4.5)
+    
+    frame_11.Position = UDim2.new(0, 0, -0.01, 0)
+    local tween3 = TweenService:Create(frame_11, TweenInfo.new(4.5, Enum.EasingStyle.Linear), { Position = UDim2.new(0, 0, 1.01, 0) })
+    tween3:Play()
+    task.wait(4.5)
+end)
