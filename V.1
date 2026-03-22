@@ -1,0 +1,80 @@
+-- [[ MONDEUR HUB: STEALTH PROTECTION V5 ]]
+-- 5 LAYERS OF SECURITY | 0% LAG | PREMIUM UI (121205)
+
+local cloneref = (type(cloneref) == "function" and cloneref) or function(...) return ... end
+local game, task, math, tick = game, task, math, tick
+
+-- [1. STEALTH PROTECTION SYSTEM]
+local _0xStatus = true
+local function _0xVerify()
+    -- Layer 1 & 2: Env & Table Check
+    local _e = pcall(function() return next(getmetatable(getfenv()).__index) end)
+    local _t = not pcall(function() return getmetatable(coroutine).__index end)
+    
+    if not _e or not _t then
+        _0xStatus = false -- Logic Corruption Trigger
+        -- Layer 3: The "CatMio" Style Logic Corruption
+        while true do task.spawn(function() print("Nice try, leaker. Mondeur Hub owns you.") end) task.wait(0.5) end
+    end
+end
+
+-- [2. INSTANT INITIALIZATION]
+-- Layer 4: Service Caching (cloneref)
+local Players = cloneref(game:GetService("Players"))
+local TweenService = cloneref(game:GetService("TweenService"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
+
+if setclipboard then setclipboard("https://discord.gg/S72bS96NV3") end
+for _, s in ipairs(game:GetDescendants()) do if s:IsA("Sound") then s.Volume = 0 end end
+
+-- [3. PREMIUM UI (MATCHES SCREENSHOT 121205)]
+local sg = Instance.new("ScreenGui", CoreGui)
+sg.Name = "MondeurHub_Final"
+
+local main = Instance.new("Frame", sg)
+main.AnchorPoint, main.Position = Vector2.new(0.5, 0.5), UDim2.new(0.5, 0, 0.5, 0)
+main.Size, main.BackgroundColor3 = UDim2.new(0, 500, 0, 350), Color3.fromRGB(8, 6, 15)
+main.BorderSizePixel = 0
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 15)
+Instance.new("UIStroke", main).Color, Instance.new("UIStroke", main).Thickness = Color3.fromRGB(45, 30, 85), 1.8
+
+local title = Instance.new("TextLabel", main)
+title.Size, title.Position, title.Text = UDim2.new(1, 0, 0, 80), UDim2.new(0, 0, 0, 15), "MONDEUR HUB"
+title.TextColor3, title.Font, title.TextSize, title.BackgroundTransparency = Color3.fromRGB(255, 255, 255), Enum.Font.GothamBlack, 25, 1
+
+local console = Instance.new("Frame", main)
+console.Size, console.Position, console.BackgroundColor3 = UDim2.new(0, 440, 0, 180), UDim2.new(0.5, -220, 0, 100), Color3.fromRGB(5, 4, 10)
+Instance.new("UICorner", console).CornerRadius = UDim.new(0, 8)
+
+local logText = Instance.new("TextLabel", console)
+logText.Size, logText.Position = UDim2.new(1, -30, 1, -20), UDim2.new(0, 15, 0, 10)
+logText.Text = "> Fetching latest scripts...\n> Optimizing performance...\n> Securing connection...\n> Checking for updates...\n> Loading UI assets...\n> Bypassing internal engine v2...\n> Verifying user data..."
+logText.TextColor3, logText.Font, logText.TextSize, logText.BackgroundTransparency, logText.LineHeight = Color3.fromRGB(130, 110, 190), Enum.Font.Code, 14, 1, 1.6
+logText.TextXAlignment = Enum.TextXAlignment.Left
+
+local barBg = Instance.new("Frame", main)
+barBg.Size, barBg.Position, barBg.BackgroundColor3 = UDim2.new(0, 440, 0, 4), UDim2.new(0.5, -220, 0, 300), Color3.fromRGB(20, 15, 30)
+Instance.new("UICorner", barBg)
+
+local bar = Instance.new("Frame", barBg)
+bar.Size, bar.BackgroundColor3 = UDim2.new(0, 0, 1, 0), Color3.fromRGB(0, 180, 255)
+Instance.new("UICorner", bar)
+
+-- [4. EXECUTION FLOW]
+task.spawn(function()
+    _0xVerify() -- Layer 5: Time-of-Execution check
+    local start_time = tick()
+    
+    local loadTime = 6
+    TweenService:Create(bar, TweenInfo.new(loadTime, Enum.EasingStyle.Quart), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+    
+    task.wait(loadTime + 0.5)
+    
+    -- Final Check: If analyze took too long, it means a debugger is attached
+    if tick() - start_time > loadTime + 5 or not _0xStatus then
+        while true do task.wait() end -- Silent Lock
+    end
+
+    sg:Destroy()
+    -- [[ MAIN SCRIPT GOES HERE ]]
+end)
