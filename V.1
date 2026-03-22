@@ -1,0 +1,199 @@
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Hidden Byte-Code: "https://discord.gg/S72bS96NV3"
+local DiscordLink = "\104\116\116\112\115\58\47\47\100\105\115\99\111\114\100\46\103\103\47\83\55\50\98\83\57\54\78\86\51"
+
+pcall(function() if setclipboard then setclipboard(DiscordLink) end end)
+
+local targetParent = CoreGui
+if not pcall(function() local _ = targetParent.Name end) then
+    targetParent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local oldLoader = targetParent:FindFirstChild("MondeurLoader")
+if oldLoader then oldLoader:Destroy() end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MondeurLoader"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 99999999
+screenGui.Parent = targetParent
+
+local bg = Instance.new("Frame", screenGui)
+bg.Size = UDim2.new(1, 0, 1, 0)
+bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+bg.BackgroundTransparency = 1
+bg.BorderSizePixel = 0
+
+local mainFrame = Instance.new("Frame", bg)
+mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+mainFrame.Size = UDim2.new(0, 480, 0, 340)
+mainFrame.BackgroundColor3 = Color3.fromRGB(11, 8, 22)
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.Visible = false
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 16)
+
+local uiStroke = Instance.new("UIStroke", mainFrame)
+uiStroke.Color = Color3.fromRGB(0, 150, 255)
+uiStroke.Thickness = 1
+uiStroke.Transparency = 0.4
+
+local title = Instance.new("TextLabel", mainFrame)
+title.Size = UDim2.new(0, 155, 0, 22)
+title.Position = UDim2.new(0, 60, 0, 16)
+title.BackgroundTransparency = 1
+title.Text = "\77\79\78\68\69\85\82\32\72\85\66"
+title.Font = Enum.Font.GothamBlack
+title.TextSize = 19
+title.TextColor3 = Color3.fromRGB(244, 236, 255)
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+local subtitleBg = Instance.new("Frame", mainFrame)
+subtitleBg.Size = UDim2.new(0, 122, 0, 14)
+subtitleBg.Position = UDim2.new(0, 60, 0, 40)
+subtitleBg.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+subtitleBg.BorderSizePixel = 0
+Instance.new("UICorner", subtitleBg).CornerRadius = UDim.new(0, 4)
+
+local subtitle = Instance.new("TextLabel", subtitleBg)
+subtitle.Size = UDim2.new(1, 0, 1, 0)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "BYPASS ENGINE v.2"
+subtitle.Font = Enum.Font.GothamBold
+subtitle.TextSize = 9
+subtitle.TextColor3 = Color3.fromRGB(180, 230, 255)
+
+local pfpFrame = Instance.new("Frame", mainFrame)
+pfpFrame.Size = UDim2.new(0, 68, 0, 68)
+pfpFrame.AnchorPoint = Vector2.new(1, 0)
+pfpFrame.Position = UDim2.new(1, -18, 0, 12)
+pfpFrame.BackgroundTransparency = 1
+local pfpImage = Instance.new("ImageLabel", pfpFrame)
+pfpImage.Size = UDim2.new(0.76, 0, 0.76, 0)
+pfpImage.AnchorPoint = Vector2.new(0.5, 0.5)
+pfpImage.Position = UDim2.new(0.5, 0, 0.5, 0)
+pfpImage.BackgroundColor3 = Color3.fromRGB(20, 13, 40)
+pfpImage.ScaleType = Enum.ScaleType.Crop
+Instance.new("UICorner", pfpImage).CornerRadius = UDim.new(1, 0)
+pcall(function() pfpImage.Image = Players:GetUserThumbnailAsync(LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420) end)
+
+local statusText = Instance.new("TextLabel", mainFrame)
+statusText.Size = UDim2.new(1, -110, 0, 18)
+statusText.Position = UDim2.new(0, 18, 0, 71)
+statusText.BackgroundTransparency = 1
+statusText.Text = "Initializing bypass engine..."
+statusText.Font = Enum.Font.GothamMedium
+statusText.TextSize = 12
+statusText.TextColor3 = Color3.fromRGB(160, 142, 200)
+statusText.TextXAlignment = Enum.TextXAlignment.Left
+
+local percentText = Instance.new("TextLabel", mainFrame)
+percentText.Size = UDim2.new(0, 75, 0, 18)
+percentText.AnchorPoint = Vector2.new(1, 0)
+percentText.Position = UDim2.new(1, -18, 0, 71)
+percentText.BackgroundTransparency = 1
+percentText.Text = "0.0%"
+percentText.Font = Enum.Font.GothamBold
+percentText.TextSize = 13
+percentText.TextColor3 = Color3.fromRGB(0, 180, 255)
+percentText.TextXAlignment = Enum.TextXAlignment.Right
+
+local barBg = Instance.new("Frame", mainFrame)
+barBg.Size = UDim2.new(1, -36, 0, 5)
+barBg.Position = UDim2.new(0, 18, 0, 93)
+barBg.BackgroundColor3 = Color3.fromRGB(22, 15, 44)
+barBg.BorderSizePixel = 0
+Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
+
+local fillBar = Instance.new("Frame", barBg)
+fillBar.Size = UDim2.new(0, 0, 1, 0)
+fillBar.BackgroundColor3 = Color3.fromRGB(0, 180, 255)
+fillBar.BorderSizePixel = 0
+Instance.new("UICorner", fillBar).CornerRadius = UDim.new(1, 0)
+
+local bottomBox = Instance.new("Frame", mainFrame)
+bottomBox.Size = UDim2.new(1, -36, 0, 40)
+bottomBox.Position = UDim2.new(0, 18, 1, -52)
+bottomBox.BackgroundColor3 = Color3.fromRGB(13, 9, 28)
+bottomBox.BackgroundTransparency = 1
+bottomBox.BorderSizePixel = 0
+Instance.new("UICorner", bottomBox).CornerRadius = UDim.new(0, 10)
+
+local bottomStroke = Instance.new("UIStroke", bottomBox)
+bottomStroke.Color = Color3.fromRGB(0, 80, 150)
+bottomStroke.Thickness = 1
+bottomStroke.Transparency = 1
+
+local discordText = Instance.new("TextLabel", bottomBox)
+discordText.Size = UDim2.new(0, 200, 1, 0)
+discordText.Position = UDim2.new(0, 16, 0, 0)
+discordText.BackgroundTransparency = 1
+discordText.Text = "\74\111\105\110\32\77\111\110\100\101\117\114\32\72\117\98\33\10" .. DiscordLink
+discordText.Font = Enum.Font.GothamMedium
+discordText.TextSize = 12
+discordText.TextColor3 = Color3.fromRGB(0, 180, 255)
+discordText.TextXAlignment = Enum.TextXAlignment.Left
+discordText.TextTransparency = 1
+
+local copyBtn = Instance.new("TextButton", bottomBox)
+copyBtn.Size = UDim2.new(0, 60, 0, 24)
+copyBtn.AnchorPoint = Vector2.new(1, 0.5)
+copyBtn.Position = UDim2.new(1, -10, 0.5, 0)
+copyBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 220)
+copyBtn.BackgroundTransparency = 1
+copyBtn.Text = "COPY"
+copyBtn.Font = Enum.Font.GothamBold
+copyBtn.TextSize = 11
+copyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+copyBtn.TextTransparency = 1
+copyBtn.BorderSizePixel = 0
+copyBtn.AutoButtonColor = false
+Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 6)
+
+copyBtn.MouseButton1Click:Connect(function()
+    pcall(function() if setclipboard then setclipboard(DiscordLink) end end)
+    copyBtn.Text = "COPIED"
+    task.delay(1.5, function() copyBtn.Text = "COPY" end)
+end)
+
+mainFrame.Visible = true
+TweenService:Create(bg, TweenInfo.new(0.25), {BackgroundTransparency = 0}):Play()
+TweenService:Create(mainFrame, TweenInfo.new(0.44, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, 480, 0, 340)}):Play()
+TweenService:Create(fillBar, TweenInfo.new(20, Enum.EasingStyle.Linear), {Size = UDim2.new(0.9999, 0, 1, 0)}):Play()
+
+task.delay(2, function() statusText.Text = "Bypassing Adopt Me! anti-cheat..."; percentText.Text = "12.5%" end)
+task.delay(4, function() statusText.Text = "Spoofing hardware ID..."; percentText.Text = "28.0%" end)
+task.delay(7, function() statusText.Text = "Loading pet database..."; percentText.Text = "45.2%" end)
+task.delay(10, function() statusText.Text = "Securing connection..."; percentText.Text = "60.8%" end)
+task.delay(13, function() statusText.Text = "Verifying user data..."; percentText.Text = "75.4%" end)
+task.delay(16, function() statusText.Text = "Injecting modules..."; percentText.Text = "88.9%" end)
+task.delay(19, function() statusText.Text = "Awaiting final handshake..."; percentText.Text = "99.9%" end)
+
+task.delay(20, function()
+    statusText.Text = "Mondeur Hub Injected!"
+    percentText.Text = "100%"
+    
+    TweenService:Create(bottomBox, TweenInfo.new(0.7), {BackgroundTransparency = 0}):Play()
+    TweenService:Create(bottomStroke, TweenInfo.new(0.7), {Transparency = 0.42}):Play()
+    TweenService:Create(discordText, TweenInfo.new(0.7), {TextTransparency = 0}):Play()
+    TweenService:Create(copyBtn, TweenInfo.new(0.7), {BackgroundTransparency = 0, TextTransparency = 0}):Play()
+    
+    task.delay(5, function()
+        TweenService:Create(bg, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(mainFrame, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(uiStroke, TweenInfo.new(0.5), {Transparency = 1}):Play()
+        TweenService:Create(bottomBox, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(bottomStroke, TweenInfo.new(0.5), {Transparency = 1}):Play()
+        TweenService:Create(discordText, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
+        TweenService:Create(copyBtn, TweenInfo.new(0.5), {BackgroundTransparency = 1, TextTransparency = 1}):Play()
+        
+        task.wait(0.5)
+        screenGui:Destroy()
+    end)
+end)
