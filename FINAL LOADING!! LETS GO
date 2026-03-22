@@ -1,0 +1,127 @@
+-- [[ MONDEUR HUB: THE FINAL MASTER V6 ]]
+-- BLACKOUT | ONE-BY-ONE CHAT | TOP BAR | AVATAR | 5-LAYER STEALTH
+
+local cloneref = (type(cloneref) == "function" and cloneref) or function(...) return ... end
+local game, task, math, tick = game, task, math, tick
+
+-- [1. STEALTH PROTECTION LAYER]
+local _0xStatus = true
+local function _0xVerify()
+    local _e = pcall(function() return next(getmetatable(getfenv()).__index) end)
+    local _t = not pcall(function() return getmetatable(coroutine).__index end)
+    if not _e or not _t then
+        _0xStatus = false
+        task.spawn(function() while true do print("Nice try, leaker. Mondeur Hub owns you.") task.wait(0.5) end end)
+    end
+end
+
+-- [2. INSTANT INITIALIZATION]
+if setclipboard then setclipboard("https://discord.gg/S72bS96NV3") end
+for _, s in ipairs(game:GetDescendants()) do if s:IsA("Sound") then s.Volume = 0 end end
+
+-- [3. UI CONSTRUCTION]
+local Players = cloneref(game:GetService("Players"))
+local TweenService = cloneref(game:GetService("TweenService"))
+local CoreGui = cloneref(game:GetService("CoreGui"))
+
+local sg = Instance.new("ScreenGui", CoreGui)
+sg.Name = "MondeurHub_Final"
+
+-- BLACKOUT BACKGROUND (Hides the game)
+local blackout = Instance.new("Frame", sg)
+blackout.Size = UDim2.new(1, 0, 1, 0)
+blackout.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+blackout.ZIndex = 0
+
+-- Main Hub Frame
+local main = Instance.new("Frame", sg)
+main.AnchorPoint, main.Position = Vector2.new(0.5, 0.5), UDim2.new(0.5, 0, 0.5, 0)
+main.Size, main.BackgroundColor3 = UDim2.new(0, 540, 0, 400), Color3.fromRGB(8, 6, 15)
+main.BorderSizePixel = 0
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 15)
+Instance.new("UIStroke", main).Color, Instance.new("UIStroke", main).Thickness = Color3.fromRGB(45, 30, 85), 2
+
+-- TOP SECTION: Title & Avatar (Left Aligned)
+local title = Instance.new("TextLabel", main)
+title.Size, title.Position = UDim2.new(0, 200, 0, 50), UDim2.new(0, 85, 0, 20)
+title.Text, title.TextColor3 = "MONDEUR HUB", Color3.fromRGB(255, 255, 255)
+title.Font, title.TextSize, title.BackgroundTransparency = Enum.Font.GothamBlack, 24, 1
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+local avatar = Instance.new("ImageLabel", main)
+avatar.Size, avatar.Position = UDim2.new(0, 50, 0, 50), UDim2.new(0, 25, 0, 20)
+avatar.Image = Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+Instance.new("UICorner", avatar).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", avatar).Color = Color3.fromRGB(0, 180, 255)
+
+-- LOADING BAR (Below Title, Above Chat)
+local barFrame = Instance.new("Frame", main)
+barFrame.Size, barFrame.Position = UDim2.new(0, 490, 0, 6), UDim2.new(0.5, -245, 0, 85)
+barFrame.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
+Instance.new("UICorner", barFrame)
+
+local bar = Instance.new("Frame", barFrame)
+bar.Size, bar.BackgroundColor3 = UDim2.new(0, 0, 1, 0), Color3.fromRGB(0, 180, 255)
+Instance.new("UICorner", bar)
+
+local percText = Instance.new("TextLabel", main)
+percText.Size, percText.Position = UDim2.new(0, 50, 0, 20), UDim2.new(1, -75, 0, 60)
+percText.Text, percText.TextColor3 = "0%", Color3.fromRGB(0, 180, 255)
+percText.Font, percText.TextSize, percText.BackgroundTransparency = Enum.Font.GothamBold, 14, 1
+
+-- ONE-BY-ONE CHAT BOX
+local console = Instance.new("Frame", main)
+console.Size, console.Position = UDim2.new(0, 490, 0, 260), UDim2.new(0.5, -245, 0, 110)
+console.BackgroundColor3 = Color3.fromRGB(5, 4, 10)
+Instance.new("UICorner", console).CornerRadius = UDim.new(0, 10)
+
+local logContainer = Instance.new("ScrollingFrame", console)
+logContainer.Size, logContainer.Position = UDim2.new(1, -20, 1, -20), UDim2.new(0, 10, 0, 10)
+logContainer.BackgroundTransparency, logContainer.ScrollBarThickness = 1, 0
+local layout = Instance.new("UIListLayout", logContainer)
+layout.Padding = UDim.new(0, 4)
+
+-- [4. EXECUTION LOGIC]
+local fakeLogs = {
+    "> Initializing Mondeur Security...",
+    "> Bypassing Adopt Me! Anti-Cheat...",
+    "> Spoofing Client HWID...",
+    "> Accessing Remote Database...",
+    "> Overriding Engine V2 Constraints...",
+    "> Injecting Lua Environment...",
+    "> Optimizing Pet-Farm Modules...",
+    "> Verifying User Permissions...",
+    "> Connection Established.",
+    "> Loading Assets: 100%",
+    "> Mondeur Hub is Ready."
+}
+
+task.spawn(function()
+    _0xVerify()
+    local loadTime = 10 -- 10 Seconds for Premium feel
+    TweenService:Create(bar, TweenInfo.new(loadTime, Enum.EasingStyle.Quart), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+    
+    -- Sync Perc & Typewriter Logs
+    for i, msg in ipairs(fakeLogs) do
+        if not _0xStatus then break end
+        
+        local label = Instance.new("TextLabel", logContainer)
+        label.Size, label.BackgroundTransparency = UDim2.new(1, 0, 0, 20), 1
+        label.TextColor3, label.Font, label.TextSize = Color3.fromRGB(150, 130, 220), Enum.Font.Code, 14
+        label.TextXAlignment, label.Text = Enum.TextXAlignment.Left, ""
+        
+        -- Typewriter effect for each line
+        for char in msg:gmatch(".") do
+            label.Text = label.Text .. char
+            task.wait(0.02)
+        end
+        
+        percText.Text = math.floor((i / #fakeLogs) * 100) .. "%"
+        logContainer.CanvasPosition = Vector2.new(0, logContainer.AbsoluteWindowSize.Y)
+        task.wait(0.5)
+    end
+    
+    task.wait(1)
+    sg:Destroy()
+    -- [[ INSERT MAIN SCRIPT HERE ]]
+end)
