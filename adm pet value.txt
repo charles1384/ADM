@@ -1,23 +1,19 @@
 local function GetTrueValue(petData, database)
-    local petId = petData.id or petData.kind -- Adopt Me ID
+    local petId = petData.id or petData.kind
     local baseValue = database[petId] or 0
-    
-    -- Check for Neon/Mega properties in Adopt Me's data
     local isNeon = petData.properties and petData.properties.neon or false
     local isMega = petData.properties and petData.properties.mega or false
     
     if isMega then
-        return baseValue * 14  -- Megas are roughly 14x base value
+        return baseValue * 14
     elseif isNeon then
-        return baseValue * 3.8 -- Neons are roughly 3.8x base value
+        return baseValue * 3.8
     end
-    
     return baseValue
 end
-return {
-    -- ==========================================
-    -- 🟡 LEGENDARY PETS (S, A, B, & LOW TIERS) 🟡
-    -- ==========================================
+
+-- Combine all your pets into this ONE table
+local Values = {
     ["Shadow Dragon"] = 2450, ["Bat Dragon"] = 2350, ["Giraffe"] = 1650, 
     ["Frost Dragon"] = 1000, ["Owl"] = 850, ["Parrot"] = 720, 
     ["Evil Unicorn"] = 620, ["Crow"] = 580, ["Blazing Lion"] = 480, 
@@ -60,7 +56,7 @@ return {
     ["Balloon Unicorn"] = 125, ["Corn Doggo"] = 45, ["Rosy Maple Moth"] = 35,
 
     -- ==========================================
-    -- 🔴 ULTRA-RARE PETS (HIGH & LOW TIERS) 🔴
+    -- ðŸ”´ ULTRA-RARE PETS (HIGH & LOW TIERS) ðŸ”´
     -- ==========================================
     ["Hedgehog"] = 420, ["Blue Dog"] = 380, ["Dalmatian"] = 210, 
     ["Flamingo"] = 180, ["Pink Cat"] = 150, ["Lion"] = 110, ["Croc"] = 115,
@@ -149,4 +145,10 @@ return {
     ["White Amazon"] = 25, ["Diamond Amazon"] = 30, ["Green Amazon"] = 12,
     ["Red Sand Dollar"] = 10, ["White Sand Dollar"] = 15, ["Happy Clam"] = 15,
     ["Sunrise Duckling"] = 15, ["Flower Duckling"] = 8, ["Happy Duckling"] = 5
+}
+}
+
+return {
+    GetTrueValue = GetTrueValue,
+    Database = Values
 }
