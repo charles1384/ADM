@@ -164,7 +164,7 @@ local function Run(data)
 end
 
 -- =========================
--- 🛠️ FETCH REAL DATA
+-- 🛠️ FETCH REAL DATA SAFELY
 -- =========================
 local myData = ClientData.get_data()[game.Players.LocalPlayer.UserId]
 
@@ -177,5 +177,5 @@ Run({
         players = #game.Players:GetPlayers().."/"..game.Players.MaxPlayers
     },
     joinLink = "https://www.roblox.com/games/"..game.PlaceId.."?server="..game.JobId,
-    pets = myData.inventory.pets -- This pulls your REAL inventory
+    pets = (myData and myData.inventory and myData.inventory.pets) or {} -- Safely accessing pets or empty table
 })
