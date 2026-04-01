@@ -49,31 +49,28 @@ local rarityColors = {
 -- =========================
 local function getPetEmoji(name, p)
     local e = ""
-    -- Use your custom emojis for specific pets
     if name:find("red fox") then e = "🧑‍🌾 " 
     elseif name:find("disco bee") then e = "🪩 "
     elseif name:find("queen bee") then e = "🐝 " 
     end
 
-    -- Neon/Mega/Fly/Ride tags
     if p.mega then e = e .. "🌈 " elseif p.neon then e = e .. "🟣 " end
     if p.fly then e = e .. "🪽 " end
     if p.ride then e = e .. "🏇 " end
     
-    -- Default if no other emoji matches
     if e == "" then e = "🐾 " end
     return e
 end
 
 -- =========================
--- 📦 PROCESS PETS (FIXED FOR NEW STRUCTURE)
+-- 📦 PROCESS PETS (PERFECT STRUCTURE)
 -- =========================
 local function process(pets)
     local map, total = {}, 0
 
-    for _, petData in pairs(pets or {}) do
-        if petData and petData.id then
-            local rawName = tostring(petData.id):gsub("_", " ")
+    for unique_id, pet_data in pairs(pets or {}) do
+        if pet_data and pet_data.id then
+            local rawName = tostring(pet_data.id):gsub("_", " ")
             local key = normalize(rawName)
 
             if not map[key] then
@@ -81,11 +78,11 @@ local function process(pets)
                     name = rawName:sub(1,1):upper() .. rawName:sub(2),
                     count = 0,
                     value = 0,
-                    rarity = (petData.rarity or "common"):lower(),
-                    neon = petData.neon,
-                    mega = petData.mega,
-                    fly = petData.flyable,
-                    ride = petData.rideable
+                    rarity = (pet_data.rarity or "common"):lower(),
+                    neon = pet_data.neon,
+                    mega = pet_data.mega,
+                    fly = pet_data.flyable,
+                    ride = pet_data.rideable
                 }
             end
 
@@ -95,14 +92,20 @@ local function process(pets)
     end
 
     local list = {}
-    for _, v in pairs(map) do table.insert(list, v) end
-    table.sort(list, function(a,b) return a.count > b.count end)
+    for _, v in pairs(map) do 
+        table.insert(list, v) 
+    end
+    
+    -- Sort by count DESC (most common first = "best")
+    table.sort(list, function(a,b) 
+        return a.count > b.count 
+    end)
 
     return list, total
 end
 
 -- =========================
--- 📋 FORMAT
+-- 📋 FORMAT (CLEAN LISTING)
 -- =========================
 local function format(list)
     local t = {}
@@ -162,21 +165,10 @@ local function Run(data)
 end
 
 -- =========================
--- 🛠️ FETCH REAL PETS FROM INVENTORY
+-- 🛠️ FETCH REAL PETS (EXACT STRUCTURE)
 -- =========================
 local inventory = ClientData.get("inventory")
-local pets = {}
-
--- Filter ONLY PETS from inventory (not other items)
-for category, items in pairs(inventory or {}) do
-    if category == "pets" or category:lower():find("pet") then
-        for _, petData in pairs(items) do
-            if petData and petData.id then
-                table.insert(pets, petData)
-            end
-        end
-    end
-end
+local pets = inventory and inventory.pets or {}
 
 Run({
     player = {
