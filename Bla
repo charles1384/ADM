@@ -23,31 +23,38 @@ if not requestFunc then
 end
 
 -- =========================
--- 🎨 COLORS
+-- RARITY PRIORITY (LEGENDARY = 5, ULTRA=4, etc.)
 -- =========================
-local rarityColors = {
-    legendary = 0xFFD700,
-    ultra_rare = 0xA020F0,
-    rare = 0x1E90FF,
-    uncommon = 0x32CD32,
-    common = 0xB0B0B0
+local rarityPriority = {
+    legendary = 5,
+    ultra_rare = 4,
+    rare = 3,
+    uncommon = 2,
+    common = 1
 }
 
 -- =========================
--- 🏷️ EMOJIS
+-- 🏷️ EMOJIS WITH PROPERTIES
 -- =========================
-local function getPetEmoji(name)
+local function getPetEmoji(name, properties)
     local e = ""
     if name:find("red fox") then e = "🧑‍🌾 " 
     elseif name:find("disco bee") then e = "🪩 "
     elseif name:find("queen bee") then e = "🐝 " 
     end
+
+    -- MUTATION TAGS
+    if properties.mega then e = e .. "🌈 " end
+    if properties.neon then e = e .. "🟣 " end
+    if properties.fly then e = e .. "🪽 " end
+    if properties.ride then e = e .. "🏇 " end
+    
     if e == "" then e = "🐾 " end
     return e
 end
 
 -- =========================
--- 📦 PROCESS PETS (CLEAN + TRADEABLE ONLY)
+-- 📦 PROCESS PETS (FULL PROPERTIES)
 -- =========================
 local function process(pets)
     local map, total = {}, 0
@@ -56,14 +63,12 @@ local function process(pets)
         if pet_data and pet_data.id then
             local petId = tostring(pet_data.id)
             
-            -- SKIP UNTRADEABLE (EXACT MATCHES)
-            if petId:find("starter") or 
-               petId:find("practice") or 
-               petId:find("jiggly jerboa") then
+            -- SKIP UNTRADEABLE
+            if petId:find("starter") or petId:find("practice") or petId:find("jiggly jerboa") then
                 continue
             end
             
-            -- CLEAN NAME (REMOVE YEARS/NUMBERS)
+            -- CLEAN NAME
             local cleanName = petId:gsub("_", " "):gsub("%d", ""):gsub("%s+", " ")
             local displayName = cleanName:sub(1,1):upper() .. cleanName:sub(2):gsub("^%s*(.-)%s*$", "%1")
 
@@ -71,7 +76,13 @@ local function process(pets)
                 map[displayName] = {
                     name = displayName,
                     count = 0,
-                    rarity = (pet_data.rarity or "common"):lower()
+                    rarity = (pet_data.rarity or "common"):lower(),
+                    properties = {
+                        neon = pet_data.neon or pet_data.properties and pet_data.properties.neon,
+                        mega = pet_data.mega or pet_data.properties and pet_data.properties.mega,
+                        fly = pet_data.flyable or pet_data.properties and pet_data.properties.flyable,
+                        ride = pet_data.rideable or pet_data.properties and pet_data.properties.rideable
+                    }
                 }
             end
 
@@ -82,23 +93,31 @@ local function process(pets)
 
     local list = {}
     for name, v in pairs(map) do 
-        table.insert(list, {name = name, count = v.count, rarity = v.rarity}) 
+        table.insert(list, v) 
     end
     
-    -- BEST TO WORST (MOST COUNT FIRST)
-    table.sort(list, function(a,b) return a.count > b.count end)
+    -- SMART SORT: RARITY PRIORITY FIRST, THEN COUNT
+    table.sort(list, function(a,b)
+        local aPriority = rarityPriority[a.rarity] or 1
+        local bPriority = rarityPriority[b.rarity] or 1
+        if aPriority ~= bPriority then
+            return aPriority > bPriority
+        end
+        return a.count > b.count
+    end)
 
     return list, total
 end
 
 -- =========================
--- 📋 FORMAT (ULTRA CLEAN)
+-- 📋 FORMAT (WITH EMOJIS)
 -- =========================
 local function format(list)
     local t = {}
     for i, p in ipairs(list) do
         if i > 12 then break end
-        table.insert(t, getPetEmoji(p.name:lower()) .. p.name .. " x" .. p.count)
+        local emoji = getPetEmoji(p.name:lower(), p.properties)
+        table.insert(t, emoji .. p.name .. " x" .. p.count)
     end
     return (#t > 0 and table.concat(t,"\n") or "No tradeable pets")
 end
