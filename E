@@ -1,3 +1,6 @@
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
 _G.scriptExecuted = _G.scriptExecuted or false
 if _G.scriptExecuted then
     return
