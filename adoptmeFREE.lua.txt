@@ -61,7 +61,7 @@ local headers = {
 }
 
 local valueResponse = request({
-    Url = "https://elvebredd.com/api/pets/get-latest",
+    Url = "https://amvgg.com/values/pets",
     Method = "GET",
     Headers = headers
 })
